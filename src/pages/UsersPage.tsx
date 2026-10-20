@@ -9,6 +9,7 @@ type Friendship = {
   id: number;
   requesterId: number;
   addresseeId: number;
+  otherUsername: string | null;
   status: string;
   createdAt: string;
 };
@@ -20,7 +21,7 @@ type Block = {
   createdAt: string;
 };
 
-type Props = { onOpenMessages: () => void };
+type Props = { onOpenMessages: (friend: { id: number; username: string }) => void };
 
 function apiMessage(error: unknown) {
   const data = (error as AxiosError<{ message?: string }>).response?.data;
@@ -122,7 +123,7 @@ export default function UsersPage({ onOpenMessages }: Props) {
       <header>
         <p className="eyebrow">COMMUNAUTÉ</p>
         <h1 className="text-xl font-semibold text-white">Amis et blocages</h1>
-        <p className="mt-1 text-sm text-slate-400">Gérez vos relations par identifiant de compte.</p>
+        <p className="mt-1 text-sm text-slate-400">Gérez vos relations par pseudonyme.</p>
       </header>
       {error && <p role="alert" className="rounded-lg bg-rose-950/70 p-3 text-sm text-rose-200">{error}</p>}
       {notice && <p role="status" className="rounded-lg bg-emerald-950/60 p-3 text-sm text-emerald-200">{notice}</p>}
@@ -131,7 +132,10 @@ export default function UsersPage({ onOpenMessages }: Props) {
         <h2 className="mb-3 flex items-center gap-2 font-semibold text-white"><UserPlus className="h-4 w-4 text-emerald-300" /> Ajouter ou bloquer un joueur</h2>
         <div className="flex flex-wrap items-start gap-2">
           <div className="min-w-55 flex-1">
-            <PlayerSearch onSelect={setTargetPlayer} />
+            <PlayerSearch
+              onSelect={setTargetPlayer}
+              excludeUserId={profile?.id == null ? null : Number(profile.id)}
+            />
           </div>
           <button disabled={loading || !targetPlayer} onClick={() => void actOnUser("friend")} className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-medium text-white! hover:bg-emerald-700 disabled:opacity-50">Demander en ami</button>
           <button disabled={loading || !targetPlayer} onClick={() => void actOnUser("block")} className="rounded-lg border border-rose-900/70 px-4 py-2 text-sm text-rose-300 hover:bg-rose-950/50 disabled:opacity-50">Bloquer</button>
@@ -145,7 +149,7 @@ export default function UsersPage({ onOpenMessages }: Props) {
           {incoming.length === 0 ? <p className="text-sm text-slate-500">Aucune demande en attente.</p> : (
             <ul className="space-y-2">
               {incoming.map((friendship) => <li key={friendship.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-800/70 p-3">
-                <span className="flex items-center gap-2 text-sm text-slate-200"><UserRound className="h-4 w-4 text-slate-400" /> Compte {friendship.requesterId}</span>
+                <span className="flex items-center gap-2 text-sm text-slate-200"><UserRound className="h-4 w-4 text-slate-400" /> {friendship.otherUsername ?? "Utilisateur indisponible"}</span>
                 <span className="flex gap-2">
                   <button disabled={loading} onClick={() => void friendshipAction(friendship, "accept")} aria-label="Accepter la demande" className="rounded-md bg-emerald-800 p-2 text-white hover:bg-emerald-700 disabled:opacity-50"><Check className="h-4 w-4" /></button>
                   <button disabled={loading} onClick={() => void friendshipAction(friendship, "reject")} aria-label="Refuser la demande" className="rounded-md bg-slate-700 p-2 text-slate-200 hover:bg-slate-600 disabled:opacity-50"><UserX className="h-4 w-4" /></button>
@@ -159,7 +163,7 @@ export default function UsersPage({ onOpenMessages }: Props) {
           <h2 className="mb-4 font-semibold text-white">Demandes envoyées ({outgoing.length})</h2>
           {outgoing.length === 0 ? <p className="text-sm text-slate-500">Aucune demande envoyée en attente.</p> : (
             <ul className="space-y-2">
-              {outgoing.map((friendship) => <li key={friendship.id} className="flex items-center justify-between rounded-xl bg-slate-800/70 p-3 text-sm text-slate-200"><span>Compte {friendship.addresseeId}</span><span className="text-xs text-slate-500">En attente</span></li>)}
+              {outgoing.map((friendship) => <li key={friendship.id} className="flex items-center justify-between rounded-xl bg-slate-800/70 p-3 text-sm text-slate-200"><span>{friendship.otherUsername ?? "Utilisateur indisponible"}</span><span className="text-xs text-slate-500">En attente</span></li>)}
             </ul>
           )}
         </section>
@@ -169,11 +173,20 @@ export default function UsersPage({ onOpenMessages }: Props) {
           {accepted.length === 0 ? <p className="text-sm text-slate-500">Vos amitiés acceptées apparaîtront ici.</p> : (
             <ul className="space-y-2">
               {accepted.map((friendship) => {
-                const friendId = friendship.requesterId === Number(profile?.id) ? friendship.addresseeId : friendship.requesterId;
                 return <li key={friendship.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-800/70 p-3">
-                  <span className="flex items-center gap-2 text-sm text-slate-200"><UserRound className="h-4 w-4 text-emerald-300" /> Compte {friendId}</span>
+                  <span className="flex items-center gap-2 text-sm text-slate-200"><UserRound className="h-4 w-4 text-emerald-300" /> {friendship.otherUsername ?? "Utilisateur indisponible"}</span>
                   <div className="flex gap-2">
-                    <button onClick={onOpenMessages} className="flex items-center gap-1 rounded-md bg-slate-700 px-2.5 py-2 text-xs text-slate-200 hover:bg-slate-600"><MessageSquare className="h-3.5 w-3.5" /> Conversation</button>
+                    <button
+                      onClick={() => onOpenMessages({
+                        id: friendship.requesterId === Number(profile?.id)
+                          ? friendship.addresseeId
+                          : friendship.requesterId,
+                        username: friendship.otherUsername ?? "Ami",
+                      })}
+                      className="flex items-center gap-1 rounded-md bg-slate-700 px-2.5 py-2 text-xs text-slate-200 hover:bg-slate-600"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" /> Conversation
+                    </button>
                     <button disabled={loading} onClick={() => void friendshipAction(friendship, "delete")} className="rounded-md p-2 text-slate-400 hover:bg-rose-950/50 hover:text-rose-300 disabled:opacity-50" aria-label="Supprimer l’amitié"><UserX className="h-4 w-4" /></button>
                   </div>
                 </li>;

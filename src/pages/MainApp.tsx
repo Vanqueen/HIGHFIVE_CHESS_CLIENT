@@ -22,6 +22,7 @@ const FULL_WIDTH_TABS = new Set(["play", "computer", "games"]);
 
 export default function MainApp() {
   const { tab, setTab, notifications } = useNavigation();
+  const [messageFriend, setMessageFriend] = useState<{ id: number; username: string } | null>(null);
   const [quickGameSettings, setQuickGameSettings] = useState({
     initialTimeSeconds: 600,
     incrementSeconds: 0,
@@ -54,12 +55,27 @@ export default function MainApp() {
               onAutoStartHandled={() => setAutoStartGame(false)}
             />
           )}
-          {tab === "computer" && <ComputerGamePage onExit={() => setTab("play")} />}
+          {tab === "computer" && <ComputerGamePage onExit={() => setTab("home")} />}
           {tab === "games" && <GamesPage onNavigate={(t) => setTab(t as typeof tab)} />}
           {tab === "tournaments" && <TournamentsPage />}
-          {tab === "users" && <UsersPage onOpenMessages={() => setTab("messages")} />}
-          {tab === "friends" && <UsersPage onOpenMessages={() => setTab("messages")} />}
-          {tab === "messages" && <MessagesPage />}
+          {tab === "users" && (
+            <UsersPage onOpenMessages={(friend) => {
+              setMessageFriend(friend);
+              setTab("messages");
+            }} />
+          )}
+          {tab === "friends" && (
+            <UsersPage onOpenMessages={(friend) => {
+              setMessageFriend(friend);
+              setTab("messages");
+            }} />
+          )}
+          {tab === "messages" && (
+            <MessagesPage
+              initialFriend={messageFriend}
+              onInitialFriendHandled={() => setMessageFriend(null)}
+            />
+          )}
           {tab === "notifications" && <NotificationsPage notifications={notifications} />}
           {tab === "learn" && <LearnPage />}
           {tab === "watch" && <WatchPage />}

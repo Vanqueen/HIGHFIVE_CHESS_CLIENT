@@ -13,6 +13,7 @@ type PlayerSearchProps = {
   onSelect: (player: PlayerSummary | null) => void;
   placeholder?: string;
   selectedPlayer?: PlayerSummary | null;
+  excludeUserId?: number | null;
 };
 
 function searchError(error: unknown) {
@@ -24,6 +25,7 @@ export default function PlayerSearch({
   onSelect,
   placeholder = "Rechercher par pseudonyme",
   selectedPlayer = null,
+  excludeUserId = null,
 }: PlayerSearchProps) {
   const [query, setQuery] = useState(selectedPlayer?.username ?? "");
   const [results, setResults] = useState<PlayerSummary[]>([]);
@@ -41,7 +43,9 @@ export default function PlayerSearch({
       void axiosInstance
         .get<PlayerSummary[]>("/users/search", { params: { username } })
         .then(({ data }) => {
-          if (!cancelled) setResults(data);
+          if (!cancelled) {
+            setResults(data.filter((player) => player.id !== excludeUserId));
+          }
         })
         .catch((requestError: unknown) => {
           if (!cancelled) setError(searchError(requestError));
@@ -55,7 +59,7 @@ export default function PlayerSearch({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [query, selectedPlayer]);
+  }, [query, selectedPlayer, excludeUserId]);
 
   const updateQuery = (value: string) => {
     setQuery(value);
