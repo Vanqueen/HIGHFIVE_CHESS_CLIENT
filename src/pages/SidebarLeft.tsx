@@ -80,12 +80,12 @@ export default function SidebarLeft() {
         <div className="vc-sidebar-quote">
         <div className="vc-sidebar-quote__icon">♞</div>
         <p>Chaque partie est une nouvelle opportunité d'apprendre et de progresser.</p>
-        <span>— VACHESS</span>
+        <span>— HIGHFIVE CHESSARENA</span>
         </div>
       ) : (
         <section className="vc-guest-signup">
           <span className="vc-guest-signup__piece" aria-hidden="true">♞</span>
-          <strong>Bienvenue sur VACHESS !</strong>
+          <strong>Bienvenue sur HIGHFIVE CHESSARENA !</strong>
           <p>Même sans compte, tu peux jouer, apprendre et t’amuser.</p>
           <a href="/auth">Créer un compte</a>
         </section>

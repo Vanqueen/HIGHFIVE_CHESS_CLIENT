@@ -26,9 +26,9 @@ export default function HeaderPage() {
     <header className="vc-header">
       <div className="vc-header__inner">
         {/* Logo */}
-        <button className="vc-logo" onClick={() => setTab("home")} aria-label="VACHESS, accueil">
+        <button className="vc-logo" onClick={() => setTab("home")} aria-label="HIGHFIVE CHESSARENA, accueil">
           <span className="vc-logo__icon">♞</span>
-          <span className="vc-logo__text">VACHESS</span>
+          <span className="vc-logo__text">HIGHFIVE CHESSARENA</span>
         </button>
 
         {/* Nav principale */}

@@ -10,7 +10,7 @@ export default function SidebarRight() {
     return (
       <aside className="vc-sidebar-right">
         <section className="vc-guest-benefits">
-          <h2>Pourquoi jouer sur VACHESS ?</h2>
+          <h2>Pourquoi jouer sur HIGHFIVE CHESSARENA ?</h2>
           <ul>
             <li><span><Zap size={17} /></span><p>Des parties rapides<br />et fluides</p></li>
             <li><span><ShieldCheck size={17} /></span><p>Une expérience<br />bienveillante</p></li>
@@ -20,7 +20,7 @@ export default function SidebarRight() {
           <blockquote>
             <strong>“</strong>
             <p>Chaque partie est une nouvelle occasion d’apprendre.</p>
-            <small>— VACHESS</small>
+            <small>— HIGHFIVE CHESSARENA</small>
           </blockquote>
         </section>
       </aside>
