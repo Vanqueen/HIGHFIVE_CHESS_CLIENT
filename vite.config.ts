@@ -14,6 +14,18 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000', // Mettre l'url exact en production
+        changeOrigin: true, // pour les requetes cross-origin
+        secure: false, // pour les requetes http
+        ws: true, // pour les websockets
+      }
+    },
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
