@@ -93,7 +93,7 @@ type PlayerStats = {
 
 type Ack = { success: boolean; error?: string; data?: unknown };
 
-const MOVE_SOUND_STORAGE_KEY = "HIGHFIVE CHESSARENAMoveSoundEnabled";
+const MOVE_SOUND_STORAGE_KEY = "CHESSARENAMoveSoundEnabled";
 
 function errorMessage(error: unknown, fallback: string) {
   const responseData = (error as AxiosError<{ message?: string }>).response?.data;
@@ -1163,7 +1163,7 @@ export default function PlayPage({
       <main className="player-dashboard vc-play-page">
         <section className="welcome-line">
           <div>
-            <p className="eyebrow">HIGHFIVE CHESSARENA · JEU LIBRE</p>
+            <p className="eyebrow">CHESSARENA · JEU LIBRE</p>
             <h1>Jouez aux échecs, sans inscription.</h1>
             <p className="welcome-line__text">
               Créez une partie et invitez un ami, ou rejoignez une partie avec son lien.

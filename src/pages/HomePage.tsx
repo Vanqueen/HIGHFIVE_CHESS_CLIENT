@@ -106,7 +106,7 @@ export default function HomePage({ onStartGame }: HomePageProps) {
       <div className="vc-guest-home">
         <section className="vc-guest-welcome">
           <div>
-            <p className="vc-guest-eyebrow">HIGHFIVE CHESSARENA · JEU LIBRE</p>
+            <p className="vc-guest-eyebrow">CHESSARENA · JEU LIBRE</p>
             <h1>Prêt à jouer ?</h1>
             <p>Choisis un mode et trouve un adversaire en quelques secondes.<br />Que tu sois débutant ou confirmé, chaque partie compte !</p>
           </div>
@@ -255,7 +255,7 @@ export default function HomePage({ onStartGame }: HomePageProps) {
     <div className="vc-home-modern">
       <section className="vc-home-hero">
         <div className="vc-home-hero__copy">
-          <span className="vc-home-eyebrow"><Zap size={14} /> HIGHFIVE CHESSARENA · À VOUS DE JOUER</span>
+          <span className="vc-home-eyebrow"><Zap size={14} /> CHESSARENA · À VOUS DE JOUER</span>
           <h1>Chaque partie<br />commence par un coup.</h1>
           <p>
             Bonjour{profile?.username ? ` ${profile.username}` : ""} ! Reprenez votre

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Gamepad2, LogOut, Swords, X } from "lucide-react";
+import { Award, Check, ChevronDown, Gamepad2, LogOut, Swords, X } from "lucide-react";
 import axiosInstance from "../axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigation } from "../context/NavigationContext";
@@ -72,6 +72,11 @@ export default function PlayerProfileMenu() {
   };
 
   const memberSince = formatMemberSince(profile?.createdAt);
+  const roleLabel = profile?.role === "ADMIN"
+    ? "Administrateur"
+    : profile?.role === "ORGANIZER"
+      ? "Organisateur"
+      : "Joueur";
 
   return (
     <div className="player-profile-menu" ref={menuRef}>
@@ -107,6 +112,7 @@ export default function PlayerProfileMenu() {
             <div className="player-profile-menu__identity-copy">
               <strong>{profile?.username ?? "Joueur"}</strong>
               {profile?.email && <span>{profile.email}</span>}
+              <span className="player-profile-menu__role">{roleLabel}</span>
               <small>
                 <i />
                 En ligne
@@ -147,6 +153,9 @@ export default function PlayerProfileMenu() {
             </button>
             <button type="button" onClick={() => openTab("play")}>
               <Swords size={17} /> Lancer une partie
+            </button>
+            <button type="button" onClick={() => { setTab("achievements"); setOpen(false); }}>
+              <Award size={17} /> Mes succès
             </button>
           </div>
           <button

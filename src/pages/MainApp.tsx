@@ -16,12 +16,17 @@ import WatchPage from "./WatchPage";
 import ProblemsPage from "./ProblemsPage";
 import RankingsPage from "./RankingsPage";
 import BoardEditorPage from "./BoardEditorPage";
+import AchievementsPage from "./AchievementsPage";
+import OrganizerDashboardPage from "./OrganizerDashboardPage";
+import AdminDashboardPage from "./AdminDashboardPage";
+import { useAuth } from "../context/AuthContext";
 
 // Pages qui utilisent le layout pleine largeur (sans sidebars)
 const FULL_WIDTH_TABS = new Set(["play", "computer", "games"]);
 
 export default function MainApp() {
   const { tab, setTab, notifications } = useNavigation();
+  const { profile } = useAuth();
   const [messageFriend, setMessageFriend] = useState<{ id: number; username: string } | null>(null);
   const [quickGameSettings, setQuickGameSettings] = useState({
     initialTimeSeconds: 600,
@@ -82,6 +87,11 @@ export default function MainApp() {
           {tab === "problems" && <ProblemsPage />}
           {tab === "rankings" && <RankingsPage />}
           {tab === "board-editor" && <BoardEditorPage />}
+          {tab === "achievements" && profile && <AchievementsPage />}
+          {tab === "organizer" && (profile?.role === "ORGANIZER" || profile?.role === "ADMIN") && (
+            <OrganizerDashboardPage onOpenTournaments={() => setTab("tournaments")} />
+          )}
+          {tab === "admin" && profile?.role === "ADMIN" && <AdminDashboardPage />}
         </main>
 
         {!isFullWidth && tab === "home" && <SidebarRight />}

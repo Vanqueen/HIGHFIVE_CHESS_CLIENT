@@ -1136,15 +1136,15 @@
 
 .vc-logo__text {
   color: var(--vc-green);
-  font-size: 30px;
+  font-size: 22px;
   font-weight: 780;
   letter-spacing: 1.1px;
   line-height: 1;
 }
 
-.vc-logo__text::first-letter {
+/* .vc-logo__text::first-letter {
   color: var(--vc-ink);
-}
+} */
 
 .vc-top-nav {
   display: flex;
@@ -1346,6 +1346,18 @@
   color: #788780;
   font-size: 12px;
   text-overflow: ellipsis;
+}
+
+.player-profile-menu__identity-copy > .player-profile-menu__role {
+  width: fit-content;
+  border-radius: 999px;
+  background: #e9f2ed;
+  padding: 3px 8px;
+  color: #286548;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .player-profile-menu__identity-copy > small {

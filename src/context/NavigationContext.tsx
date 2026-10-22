@@ -17,7 +17,10 @@ export type Tab =
   | "friends"
   | "messages"
   | "notifications"
-  | "users";
+  | "users"
+  | "achievements"
+  | "organizer"
+  | "admin";
 
 type NavigationContextType = {
   tab: Tab;
