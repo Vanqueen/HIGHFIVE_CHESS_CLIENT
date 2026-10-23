@@ -4,6 +4,7 @@ export type GuestGameSession = {
   color: "WHITE" | "BLACK";
   token: string;
   game: unknown;
+  waitingForMatchmaking?: boolean;
 };
 
 const GUEST_SESSION_KEY = "guestGameSession";

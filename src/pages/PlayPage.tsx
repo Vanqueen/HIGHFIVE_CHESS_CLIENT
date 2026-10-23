@@ -23,8 +23,12 @@ import {
 import type { AxiosError } from "axios";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContextValue";
-import axiosInstance from "../axios";
+import axiosInstance, { type SkipAuthRequestConfig } from "../axios";
 import ChessBoard from "../components/ChessBoard";
+import ColorPreferenceSelector, {
+  type ColorPreference,
+} from "../components/ColorPreferenceSelector";
+import GameSetupControls from "../components/GameSetupControls";
 import PlayerSearch, { type PlayerSummary } from "../components/PlayerSearch";
 import {
   clearGuestGameSession,
@@ -40,7 +44,6 @@ type PlayPageProps = {
   autoStartGame?: boolean;
   onAutoStartHandled?: () => void;
 };
-
 type BackendGame = {
   id: number;
   challengeId?: number | null;
@@ -204,8 +207,12 @@ export default function PlayPage({
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [activeGame, setActiveGame] = useState<BackendGame | null>(() => {
     const saved = readGuestGameSession();
-    return saved ? readGame(saved.game) : null;
+    return saved && !saved.waitingForMatchmaking ? readGame(saved.game) : null;
   });
+  const [waitingInviteGame, setWaitingInviteGame] = useState<BackendGame | null>(null);
+  const [matchmakingGame, setMatchmakingGame] = useState<BackendGame | null>(null);
+  const [searchingForOpponent, setSearchingForOpponent] = useState(false);
+  const [gamePlayersReady, setGamePlayersReady] = useState(false);
   const [clockSyncedAt, setClockSyncedAt] = useState(Date.now);
   const [clockNow, setClockNow] = useState(Date.now);
   const [gamePanelTab, setGamePanelTab] = useState<"game" | "chat" | "history">("game");
@@ -231,7 +238,8 @@ export default function PlayPage({
   const [initialTimeSeconds, setInitialTimeSeconds] = useState(configuredTimeSeconds);
   const [incrementSeconds, setIncrementSeconds] = useState(configuredIncrementSeconds);
   const [inviteTokenInput, setInviteTokenInput] = useState("");
-  const [colorPreference, setColorPreference] = useState<"WHITE" | "BLACK" | "RANDOM">("RANDOM");
+  const [colorPreference, setColorPreference] = useState<ColorPreference>("RANDOM");
+  const [ratedChallenge, setRatedChallenge] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -242,6 +250,7 @@ export default function PlayPage({
   const audioContextRef = useRef<AudioContext | null>(null);
   const dismissedGameIds = useRef(new Set<number>());
   const createdChallengeId = useRef<number | null>(null);
+  const matchmakingCreationInProgress = useRef(false);
   const processedInvitation = useRef<string | null>(null);
   const processedAnonymousInvitation = useRef<string | null>(null);
   const autoStartHandled = useRef(false);
@@ -363,6 +372,7 @@ export default function PlayPage({
         applyGameSnapshot(game);
         setMyParticipantId(data.participant.id);
         setMyColor(data.participant.color);
+        setGamePlayersReady(false);
         if (data.guestSessionToken) {
           const session: GuestGameSession = {
             gameId: game.id,
@@ -381,7 +391,7 @@ export default function PlayPage({
             setGuestSession(null);
           }
         }
-        setNotice("Défi accepté. La partie est prête.");
+        setNotice("Défi accepté. En attente que les deux joueurs soient prêts.");
       } catch (requestError) {
         setError(errorMessage(requestError, "Impossible d’accepter ce défi."));
       } finally {
@@ -430,9 +440,10 @@ export default function PlayPage({
         }
         setMyParticipantId(data.participant.id);
         setMyColor(data.participant.color);
+        setGamePlayersReady(false);
         if (data.guestSessionToken) setMoves([]);
         applyGameSnapshot(game);
-        setNotice("Vous avez rejoint la partie. En attente de l’adversaire…");
+        setNotice("Vous avez rejoint la partie. En attente que les deux joueurs soient prêts…");
       } catch (requestError) {
         setError(errorMessage(requestError, "Impossible de rejoindre cette partie."));
       } finally {
@@ -476,6 +487,7 @@ export default function PlayPage({
       if (
         waitingGame &&
         !activeGameRef.current &&
+        !matchmakingCreationInProgress.current &&
         (
           !profileTargetId ||
           (
@@ -531,8 +543,11 @@ export default function PlayPage({
   }, [activeGame?.id, guestSession?.gameId]);
 
   useEffect(() => {
-    const gameId = activeGame?.id;
+    const gameId = activeGame?.id ?? waitingInviteGame?.id;
     if (!socket || gameId === undefined || !connected) return;
+    const onGameReady = (payload: { gameId?: number }) => {
+      if (payload.gameId === gameId) setGamePlayersReady(true);
+    };
     const onGameState = (payload: unknown) => {
       if (!payload || typeof payload !== "object") return;
       const state = payload as {
@@ -541,7 +556,12 @@ export default function PlayPage({
         moves?: BackendMove[];
       };
       const game = readGame(state);
-      if (game) applyGameSnapshot(game, Date.now());
+      if (game?.status === "IN_PROGRESS") setGamePlayersReady(true);
+      const waitingForOpponent = game?.id === waitingInviteGame?.id;
+      if (game && (!waitingForOpponent || (state.participants?.length ?? 0) > 1)) {
+        if (waitingForOpponent) setWaitingInviteGame(null);
+        applyGameSnapshot(game, Date.now());
+      }
       if (state.moves) setMoves(state.moves);
       const participant = state.participants?.find(
         (item) => item.userId === Number(profile?.id),
@@ -571,11 +591,21 @@ export default function PlayPage({
       if (!payload || typeof payload !== "object") return;
       const update = payload as { action?: string; result?: unknown };
       const game = readGame(update.result);
-      if (game) applyGameSnapshot(game, Date.now());
+      const invitationAccepted = game?.id === waitingInviteGame?.id &&
+        update.action === "challenge-accepted";
+      if (game && (!waitingInviteGame || invitationAccepted)) {
+        if (invitationAccepted) setWaitingInviteGame(null);
+        applyGameSnapshot(game, Date.now());
+      }
       if (update.action === "draw-offered") setNotice("Votre adversaire propose la nulle.");
       if (update.action === "undo-requested") setNotice("Votre adversaire demande à annuler son dernier coup.");
       if (update.action === "draw-accepted") setNotice("La partie se termine par une nulle.");
       if (update.action === "resigned") setNotice("La partie est terminée.");
+    };
+    const onPlayerJoined = () => {
+      if (!waitingInviteGame || waitingInviteGame.id !== gameId) return;
+      setWaitingInviteGame(null);
+      applyGameSnapshot(waitingInviteGame, Date.now());
     };
     const onTimer = (payload: unknown) => {
       if (!payload || typeof payload !== "object") return;
@@ -608,6 +638,8 @@ export default function PlayPage({
     socket.on("timer-update", onTimer);
     socket.on("game-error", onGameError);
     socket.on("chat-message", onChatMessage);
+    socket.on("player-joined", onPlayerJoined);
+    socket.on("game-ready", onGameReady);
     socket.emit("join-game", { gameId }, (ack: Ack) => {
       if (!ack?.success) setError(ack?.error ?? "Impossible de rejoindre la partie.");
     });
@@ -619,8 +651,18 @@ export default function PlayPage({
       socket.off("timer-update", onTimer);
       socket.off("game-error", onGameError);
       socket.off("chat-message", onChatMessage);
+      socket.off("player-joined", onPlayerJoined);
+      socket.off("game-ready", onGameReady);
     };
-  }, [socket, connected, activeGame?.id, profile?.id, applyGameSnapshot, playMoveSound]);
+  }, [
+    socket,
+    connected,
+    activeGame?.id,
+    waitingInviteGame,
+    profile?.id,
+    applyGameSnapshot,
+    playMoveSound,
+  ]);
 
   const chess = useMemo(
     () => new Chess(activeGame?.currentFen),
@@ -636,16 +678,27 @@ export default function PlayPage({
       const invitedUserId = targetPlayer?.id ?? null;
       const { data } = await axiosInstance.post<{
         challenge?: { id: number };
+        game?: BackendGame;
+        participant?: { id: number; color: "WHITE" | "BLACK" };
       }>("/challenges", {
         invitedUserId,
         initialTimeSeconds,
         incrementSeconds,
         colorPreference,
+        isRated: ratedChallenge,
       });
       const challengeId = data.challenge?.id;
       if (!Number.isSafeInteger(challengeId) || !challengeId) {
         throw new Error("Le serveur n’a pas retourné l’identifiant du défi.");
       }
+      const game = readGame(data.game);
+      if (!game || !data.participant) {
+        throw new Error("Le serveur n’a pas retourné la partie du défi.");
+      }
+      setWaitingInviteGame(game);
+      setMyParticipantId(data.participant.id);
+      setMyColor(data.participant.color);
+      setGamePlayersReady(false);
       createdChallengeId.current = challengeId;
       if (invitedUserId === null) {
         const { data: link } = await axiosInstance.post<{ token: string }>(
@@ -672,6 +725,7 @@ export default function PlayPage({
     setNotice("");
     setShareUrl("");
     try {
+      const skipAuthConfig: SkipAuthRequestConfig = { skipAuth: true };
       const { data } = await axiosInstance.post<{
         game?: BackendGame;
         participant?: { id: number; color: "WHITE" | "BLACK" };
@@ -680,7 +734,8 @@ export default function PlayPage({
       }>("/invitation-links/anonymous", {
         initialTimeSeconds,
         incrementSeconds,
-      });
+        colorPreference,
+      }, skipAuthConfig);
       const game = readGame(data);
       if (!game || !data.participant || !data.guestSessionToken || !data.inviteToken) {
         throw new Error("Le serveur n’a pas retourné les informations de la partie invitée.");
@@ -697,8 +752,9 @@ export default function PlayPage({
       setMyParticipantId(data.participant.id);
       setMyColor(data.participant.color);
       setMoves([]);
+      setGamePlayersReady(false);
       setChatMessages([]);
-      applyGameSnapshot(game);
+      setWaitingInviteGame(game);
       const inviteUrl = `${window.location.origin}/guest-game/${encodeURIComponent(data.inviteToken)}`;
       setShareUrl(inviteUrl);
       setNotice("Partie créée. Partagez ce lien avec votre adversaire.");
@@ -707,14 +763,149 @@ export default function PlayPage({
     } finally {
       setLoading(false);
     }
-  }, [applyGameSnapshot, incrementSeconds, initialTimeSeconds]);
+  }, [colorPreference, incrementSeconds, initialTimeSeconds]);
+
+  const startMatchmaking = useCallback(async () => {
+    matchmakingCreationInProgress.current = true;
+    setLoading(true);
+    setError("");
+    setNotice("");
+    setShareUrl("");
+    try {
+      if (profile && guestSession) {
+        clearGuestGameSession();
+        setGuestSession(null);
+      }
+      const requestConfig: SkipAuthRequestConfig | undefined = profile
+        ? undefined
+        : { skipAuth: true };
+      const { data } = await axiosInstance.post<{
+        game?: BackendGame;
+        participant?: { id: number; color: "WHITE" | "BLACK" };
+        guestSessionToken?: string;
+      }>("/games/matchmaking", {
+        initialTimeSeconds,
+        incrementSeconds,
+      }, requestConfig);
+      const game = readGame(data);
+      if (!game || !data.participant || (!profile && !data.guestSessionToken)) {
+        throw new Error("Le serveur n’a pas retourné les informations de la recherche.");
+      }
+      dismissedGameIds.current.add(game.id);
+      if (data.guestSessionToken) {
+        const session: GuestGameSession = {
+          gameId: game.id,
+          participantId: data.participant.id,
+          color: data.participant.color,
+          token: data.guestSessionToken,
+          game,
+          waitingForMatchmaking: true,
+        };
+        saveGuestGameSession(session);
+        setGuestSession(session);
+      }
+      setMyParticipantId(data.participant.id);
+      setMyColor(data.participant.color);
+      setMoves([]);
+      setGamePlayersReady(false);
+      setChatMessages([]);
+      setMatchmakingGame(game);
+      setSearchingForOpponent(true);
+      setNotice("Recherche d’un adversaire connecté…");
+    } catch (requestError) {
+      setError(errorMessage(requestError, "Impossible de rechercher un adversaire."));
+    } finally {
+      matchmakingCreationInProgress.current = false;
+      setLoading(false);
+    }
+  }, [guestSession, incrementSeconds, initialTimeSeconds, profile]);
 
   useEffect(() => {
-    if (!autoStartGame || profile || autoStartHandled.current) return;
+    if (!autoStartGame || autoStartHandled.current) return;
     autoStartHandled.current = true;
     onAutoStartHandled?.();
-    void createAnonymousGame();
-  }, [autoStartGame, createAnonymousGame, onAutoStartHandled, profile]);
+    void startMatchmaking();
+  }, [autoStartGame, onAutoStartHandled, startMatchmaking]);
+
+  useEffect(() => {
+    if (!matchmakingGame || !socket || !connected) return;
+    const onMatchFound = (payload: unknown) => {
+      if (!payload || typeof payload !== "object") return;
+      const match = payload as {
+        game?: unknown;
+        participant?: { id: number; color: "WHITE" | "BLACK" };
+        guestSessionToken?: string;
+      };
+      const game = readGame(match);
+      if (!game || !match.participant) {
+        setError("Le serveur n’a pas retourné les informations du match.");
+        return;
+      }
+      if (match.guestSessionToken) {
+        const session: GuestGameSession = {
+          gameId: game.id,
+          participantId: match.participant.id,
+          color: match.participant.color,
+          token: match.guestSessionToken,
+          game,
+        };
+        saveGuestGameSession(session);
+        setGuestSession(session);
+      } else if (guestSession?.waitingForMatchmaking) {
+        clearGuestGameSession();
+        setGuestSession(null);
+      }
+      setMyParticipantId(match.participant.id);
+      setMyColor(match.participant.color);
+      setMoves([]);
+      setChatMessages([]);
+      setSearchingForOpponent(false);
+      setMatchmakingGame(null);
+      applyGameSnapshot(game);
+      setNotice("Adversaire trouvé. La partie commence.");
+    };
+    const onMatchmakingError = (payload: { message?: string }) => {
+      setSearchingForOpponent(false);
+      setMatchmakingGame(null);
+      setError(payload.message ?? "Impossible de rechercher un adversaire.");
+    };
+    socket.on("matchmaking-found", onMatchFound);
+    socket.on("matchmaking-error", onMatchmakingError);
+    socket.emit("matchmaking-join", { gameId: matchmakingGame.id }, (ack: Ack) => {
+      if (!ack?.success) {
+        setSearchingForOpponent(false);
+        setMatchmakingGame(null);
+        setError(ack?.error ?? "Impossible de rejoindre la file d’attente.");
+      }
+    });
+    return () => {
+      socket.off("matchmaking-found", onMatchFound);
+      socket.off("matchmaking-error", onMatchmakingError);
+    };
+  }, [applyGameSnapshot, connected, guestSession, matchmakingGame, socket]);
+
+  useEffect(() => {
+    const gameId = matchmakingGame?.id;
+    return () => {
+      if (gameId !== undefined) socket?.emit("matchmaking-cancel");
+    };
+  }, [matchmakingGame?.id, socket]);
+
+  const cancelMatchmaking = () => {
+    if (matchmakingGame) {
+      dismissedGameIds.current.add(matchmakingGame.id);
+      socket?.emit("matchmaking-cancel");
+    }
+    if (guestSession?.waitingForMatchmaking) {
+      clearGuestGameSession();
+      setGuestSession(null);
+    }
+    setMatchmakingGame(null);
+    setSearchingForOpponent(false);
+    setMyParticipantId(null);
+    setMyColor(null);
+    setNotice("Recherche annulée.");
+  };
 
   const joinAnonymousGame = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -750,10 +941,12 @@ export default function PlayPage({
       setMyParticipantId(data.participant.id);
       setMyColor(data.participant.color);
       setMoves([]);
+      setGamePlayersReady(false);
       setChatMessages([]);
+      setWaitingInviteGame(null);
       applyGameSnapshot(game);
       setInviteTokenInput("");
-      setNotice("Vous avez rejoint la partie. En attente de l’adversaire…");
+      setNotice("Vous avez rejoint la partie. En attente que les deux joueurs soient prêts…");
     } catch (requestError) {
       setError(errorMessage(requestError, "Impossible de rejoindre cette partie."));
     } finally {
@@ -801,11 +994,14 @@ export default function PlayPage({
   };
 
   const handleSquareClick = async (square: Square) => {
+    const openingMove = activeGame?.status === "WAITING" &&
+      gamePlayersReady &&
+      myColor === "WHITE";
     if (
       !activeGame ||
-      activeGame.status !== "IN_PROGRESS" ||
+      (activeGame.status !== "IN_PROGRESS" && !openingMove) ||
       !myColor ||
-      activeGame.activeColor !== myColor ||
+      (activeGame.status === "IN_PROGRESS" && activeGame.activeColor !== myColor) ||
       chess.turn() !== (myColor === "WHITE" ? "w" : "b")
     ) return;
 
@@ -824,15 +1020,30 @@ export default function PlayPage({
     }
 
     try {
-      const move = chess.move({ from: selectedSquare, to: square, promotion: "q" });
-      const movePath = guestSession?.gameId === activeGame.id
-        ? `/games/guest/${activeGame.id}/moves`
-        : `/games/${activeGame.id}/moves`;
-      await axiosInstance.post(movePath, {
-        from: selectedSquare,
-        to: square,
-        ...(move.promotion ? { promotion: move.promotion.toUpperCase() } : {}),
+      if (!socket || !connected) throw new Error("Connexion au serveur interrompue.");
+      const validationBoard = new Chess(activeGame.currentFen);
+      const move = validationBoard.move({ from: selectedSquare, to: square, promotion: "q" });
+      const promotion = move.promotion === "q"
+        ? "QUEEN"
+        : move.promotion === "r"
+          ? "ROOK"
+          : move.promotion === "b"
+            ? "BISHOP"
+            : move.promotion === "n"
+              ? "KNIGHT"
+              : undefined;
+      const acknowledgement = await new Promise<Ack>((resolve) => {
+        socket.emit("move", {
+          gameId: activeGame.id,
+          from: selectedSquare,
+          to: square,
+          ...(promotion ? { promotion } : {}),
+        }, resolve);
       });
+      if (!acknowledgement?.success) {
+        throw new Error(acknowledgement?.error ?? "Le serveur a refusé ce coup.");
+      }
+      setError("");
     } catch (requestError) {
       setError(errorMessage(requestError, "Ce coup n’est pas autorisé."));
       setSelectedSquare(null);
@@ -923,6 +1134,7 @@ export default function PlayPage({
     activeGameRef.current = null;
     setActiveGame(null);
     setGamePanelTab("game");
+    setGamePlayersReady(false);
     setMyColor(null);
     setMyParticipantId(null);
     setMoves([]);
@@ -1050,7 +1262,11 @@ export default function PlayPage({
               </span>
             </div>
             {activeGame.status === "WAITING" && (
-              <p className="vc-game-status">Votre adversaire doit rejoindre la partie pour démarrer l’horloge.</p>
+              <p className="vc-game-status">
+                {gamePlayersReady
+                  ? "La partie commence au premier coup des Blancs."
+                  : "En attente que les deux joueurs soient prêts."}
+              </p>
             )}
             {activeGame.status === "FINISHED" && (
               <p className="vc-game-status is-finished">
@@ -1172,58 +1388,79 @@ export default function PlayPage({
           </div>
           <a
             href="/auth"
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-100 hover:bg-slate-800"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-slate-800"
           >
             Connexion / inscription <ArrowRight size={16} />
           </a>
         </section>
         <a
           href="/computer"
-          className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-100 hover:bg-slate-800"
+          className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-slate-800"
         >
-          <Bot size={17} /> Jouer contre l’ordinateur
+          <Bot size={17} /> <span className="text-gray-950">Jouer contre l’ordinateur</span>
         </a>
 
-        {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p>}
-        {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{notice}</p>}
+        {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-500">{error}</p>}
+        {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-500">{notice}</p>}
+
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
+          <div>
+            <p className="eyebrow">PARTIE RAPIDE</p>
+            <h2 className="mt-1 text-xl font-semibold text-white">Jouer contre un adversaire aléatoire</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Vous serez associé à un joueur connecté avec la même cadence. Les couleurs sont tirées au sort.
+            </p>
+          </div>
+          {searchingForOpponent ? (
+            <button
+              type="button"
+              onClick={cancelMatchmaking}
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-600"
+            >
+              <LoaderCircle className="h-4 w-4 animate-spin" /> Annuler la recherche
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void startMatchmaking()}
+              disabled={loading || (Boolean(profile) && !connected)}
+              className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-200 disabled:opacity-50"
+            >
+              {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
+              Trouver un adversaire
+            </button>
+          )}
+        </section>
 
         <section className="grid gap-5 lg:grid-cols-2">
           <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-5">
             <p className="eyebrow">INVITER UN ADVERSAIRE</p>
             <h2 className="mt-1 text-xl font-semibold text-white">Créer une partie</h2>
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              La partie est anonyme et non classée. Un lien à usage unique sera créé pour votre adversaire.
+              Créez une partie anonyme et non classée, puis partagez le lien avec un ami, même s’il possède déjà un compte.
             </p>
-            <label className="mt-5 block text-xs text-slate-400">
-              Cadence
-              <select
-                value={initialTimeSeconds}
-                onChange={(event) => setInitialTimeSeconds(Number(event.target.value))}
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
-              >
-                <option value={0}>Sans limite</option>
-                <option value={60}>1 minute</option>
-                <option value={180}>3 minutes</option>
-                <option value={300}>5 minutes</option>
-                <option value={600}>10 minutes</option>
-                <option value={900}>15 minutes</option>
-              </select>
-            </label>
-            {initialTimeSeconds > 0 && (
-              <label className="mt-3 block text-xs text-slate-400">
-                Incrément par coup
-                <select
-                  value={incrementSeconds}
-                  onChange={(event) => setIncrementSeconds(Number(event.target.value))}
-                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
-                >
-                  <option value={0}>0 seconde</option>
-                  <option value={2}>2 secondes</option>
-                  <option value={5}>5 secondes</option>
-                  <option value={10}>10 secondes</option>
-                </select>
-              </label>
-            )}
+            <div className="mt-5">
+              <GameSetupControls
+                initialTimeSeconds={initialTimeSeconds}
+                incrementSeconds={incrementSeconds}
+                onTimeControlChange={(seconds, increment) => {
+                  setInitialTimeSeconds(seconds);
+                  setIncrementSeconds(increment);
+                }}
+                rated={false}
+                ratedAvailable={false}
+                ratedUnavailableReason="Les parties sans compte restent amicales et non classées."
+              />
+            </div>
+            <div className="mt-5">
+              <ColorPreferenceSelector
+                value={colorPreference}
+                onChange={setColorPreference}
+              />
+              <p className="mt-2 text-xs text-slate-500">
+                Votre adversaire recevra l’autre couleur.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => void createAnonymousGame()}
@@ -1231,7 +1468,7 @@ export default function PlayPage({
               className="mt-5 inline-flex items-center gap-2 rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-200 disabled:opacity-50"
             >
               {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
-              Créer et jouer
+              Créer un lien d’invitation
             </button>
             {shareUrl && (
               <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950/70 p-3">
@@ -1263,7 +1500,7 @@ export default function PlayPage({
             <p className="eyebrow">REJOINDRE UNE PARTIE</p>
             <h2 className="mt-1 text-xl font-semibold text-white">Vous avez reçu un lien ?</h2>
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              Ouvrez directement le lien reçu ou collez ici le jeton d’invitation d’une partie anonyme.
+              Ouvrez directement le lien reçu ou collez le jeton. Un ami connecté peut rejoindre une partie créée en mode invité.
             </p>
             <form onSubmit={(event) => void joinAnonymousGame(event)} className="mt-5 space-y-3">
               <label htmlFor="guest-invite-token" className="block text-xs text-slate-400">
@@ -1280,7 +1517,7 @@ export default function PlayPage({
               <button
                 type="submit"
                 disabled={loading || !inviteTokenInput.trim()}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-600 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-gray-100! hover:bg-slate-600 disabled:opacity-50"
               >
                 {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
                 Rejoindre la partie
@@ -1307,6 +1544,34 @@ export default function PlayPage({
 
       {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p>}
       {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{notice}</p>}
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
+        <div>
+          <p className="eyebrow">PARTIE RAPIDE</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">Jouer contre un adversaire aléatoire</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Rejoignez la file d’attente et affrontez un joueur connecté à la même cadence. Les couleurs sont attribuées au hasard.
+          </p>
+        </div>
+        {searchingForOpponent ? (
+          <button
+            type="button"
+            onClick={cancelMatchmaking}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-600"
+          >
+            <LoaderCircle className="h-4 w-4 animate-spin" /> Annuler la recherche
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void startMatchmaking()}
+            disabled={loading || (Boolean(profile) && !connected)}
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-200 disabled:opacity-50"
+          >
+            {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
+            Trouver un adversaire
+          </button>
+        )}
+      </section>
       {profileTargetId && targetPlayer && (
         <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
           <div>
@@ -1357,54 +1622,41 @@ export default function PlayPage({
                 <div className="mt-1">
                   <PlayerSearch
                     selectedPlayer={targetPlayer}
-                    onSelect={setTargetPlayer}
+                    onSelect={(player) => {
+                      setTargetPlayer(player);
+                      if (!player) setRatedChallenge(false);
+                    }}
                     placeholder="Rechercher par pseudonyme"
                   />
                 </div>
               )}
             </div>
-          <label className="text-xs text-slate-400">
-            Cadence
-              <select value={initialTimeSeconds} onChange={(event) => setInitialTimeSeconds(Number(event.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white">
-                <option value={0}>Sans limite</option>
-                <option value={60}>1 + 0</option>
-                <option value={180}>3 + 0</option>
-                <option value={300}>5 + 0</option>
-                <option value={600}>10 + 0</option>
-                <option value={900}>15 + 10</option>
-              </select>
-            </label>
-            <label className="text-xs text-slate-400 sm:col-span-2">
-              Votre couleur
-              <select
-                value={colorPreference}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (value === "WHITE" || value === "BLACK" || value === "RANDOM") {
-                    setColorPreference(value);
-                  }
+            <div className="sm:col-span-2">
+              <GameSetupControls
+                initialTimeSeconds={initialTimeSeconds}
+                incrementSeconds={incrementSeconds}
+                onTimeControlChange={(seconds, increment) => {
+                  setInitialTimeSeconds(seconds);
+                  setIncrementSeconds(increment);
+                  if (seconds === 0) setRatedChallenge(false);
                 }}
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
-              >
-                <option value="RANDOM">Aléatoire (choix différent à chaque défi)</option>
-                <option value="WHITE">Blancs</option>
-                <option value="BLACK">Noirs</option>
-              </select>
+                rated={ratedChallenge}
+                onRatedChange={setRatedChallenge}
+                ratedAvailable={Boolean(targetPlayer) && initialTimeSeconds > 0}
+                ratedUnavailableReason={!targetPlayer
+                  ? "Pour une partie classée, choisissez un joueur connecté."
+                  : "Une partie sans limite de temps ne peut pas être classée."}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <ColorPreferenceSelector
+                value={colorPreference}
+                onChange={setColorPreference}
+              />
               <span className="mt-1 block text-slate-500">
                 Votre adversaire recevra automatiquement l’autre couleur.
               </span>
-            </label>
-            {initialTimeSeconds > 0 && (
-              <label className="text-xs text-slate-400 sm:col-span-2">
-                Incrément par coup
-                <select value={incrementSeconds} onChange={(event) => setIncrementSeconds(Number(event.target.value))} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white">
-                  <option value={0}>0 seconde</option>
-                  <option value={2}>2 secondes</option>
-                  <option value={5}>5 secondes</option>
-                  <option value={10}>10 secondes</option>
-                </select>
-              </label>
-            )}
+            </div>
           </div>
           <button
             onClick={() => void createChallenge()}
@@ -1416,7 +1668,7 @@ export default function PlayPage({
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-200 disabled:opacity-50"
           >
             {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
-            {targetPlayer ? "Envoyer le défi" : "Créer un lien de défi"}
+            {targetPlayer ? "Défier un ami" : "Créer un lien de défi"}
           </button>
           {targetPlayer?.id === Number(profile?.id) && (
             <p className="mt-2 text-xs text-rose-300">Vous ne pouvez pas vous défier vous-même.</p>

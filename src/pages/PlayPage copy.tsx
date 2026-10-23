@@ -1160,7 +1160,7 @@ export default function PlayPage({
           href="/computer"
           className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-semibold text-slate-100 hover:bg-slate-800"
         >
-          <Bot size={17} /> Jouer contre l’ordinateur
+          <Bot size={17} /> <span className="text-gray-950">Jouer contre l’ordinateur</span>
         </a>
 
         {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p>}

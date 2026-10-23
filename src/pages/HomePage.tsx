@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Bot,
-  ChartNoAxesCombined,
+  BookOpen,
+  CalendarDays,
   Check,
   Clock3,
   Gamepad2,
+  Medal,
   Swords,
   Trophy,
   Users,
@@ -17,16 +19,23 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigation } from "../context/NavigationContext";
 import ChessBoard from "../components/ChessBoard";
 
-type PlayerStats = {
-  gamesPlayed: number;
-  wins: number;
-  losses: number;
-  draws: number;
-};
-
 type HomeGame = {
   id: number;
   status: string;
+};
+
+type HomeTournament = {
+  id: number;
+  name: string;
+  format: "SWISS" | "ROUND_ROBIN";
+  status: string;
+  startsAt: string;
+  maxParticipants: number;
+};
+
+type HomeRatings = {
+  overallRating: number;
+  modes: Array<{ category: "BLITZ" | "RAPID" | "CLASSICAL"; rating: number }>;
 };
 
 type HomePageProps = {
@@ -56,8 +65,9 @@ function getErrorMessage(error: unknown) {
 export default function HomePage({ onStartGame }: HomePageProps) {
   const { profile, accessToken } = useAuth();
   const { setTab } = useNavigation();
-  const [stats, setStats] = useState<PlayerStats | null>(null);
   const [hasActiveGame, setHasActiveGame] = useState(false);
+  const [upcomingTournaments, setUpcomingTournaments] = useState<HomeTournament[]>([]);
+  const [ratings, setRatings] = useState<HomeRatings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [gameFormat, setGameFormat] = useState<GameFormat>("classic");
@@ -69,22 +79,34 @@ export default function HomePage({ onStartGame }: HomePageProps) {
     if (!profile?.id || !accessToken) return;
     let cancelled = false;
     void Promise.allSettled([
-      axiosInstance.get<PlayerStats>("/users/me/statistics"),
       axiosInstance.get<HomeGame[]>("/games/me"),
-    ]).then(([statsResult, gamesResult]) => {
+      axiosInstance.get<HomeTournament[]>("/tournaments"),
+      axiosInstance.get<HomeRatings>("/users/me/ratings"),
+    ]).then(([gamesResult, tournamentsResult, ratingsResult]) => {
       if (cancelled) return;
       const errors: string[] = [];
-      if (statsResult.status === "fulfilled") {
-        setStats(statsResult.value.data);
-      } else {
-        errors.push(getErrorMessage(statsResult.reason));
-      }
       if (gamesResult.status === "fulfilled") {
         setHasActiveGame(gamesResult.value.data.some(
           (game) => game.status === "WAITING" || game.status === "IN_PROGRESS",
         ));
       } else {
         errors.push(getErrorMessage(gamesResult.reason));
+      }
+      if (tournamentsResult.status === "fulfilled") {
+        setUpcomingTournaments(tournamentsResult.value.data
+          .filter((tournament) =>
+            (tournament.status === "DRAFT" || tournament.status === "REGISTRATION_OPEN") &&
+            Date.parse(tournament.startsAt) >= Date.now(),
+          )
+          .sort((first, second) => Date.parse(first.startsAt) - Date.parse(second.startsAt))
+          .slice(0, 3));
+      } else {
+        errors.push(getErrorMessage(tournamentsResult.reason));
+      }
+      if (ratingsResult.status === "fulfilled") {
+        setRatings(ratingsResult.value.data);
+      } else {
+        errors.push(getErrorMessage(ratingsResult.reason));
       }
       setError(errors.join(" "));
       setLoading(false);
@@ -255,25 +277,21 @@ export default function HomePage({ onStartGame }: HomePageProps) {
     <div className="vc-home-modern">
       <section className="vc-home-hero">
         <div className="vc-home-hero__copy">
-          <span className="vc-home-eyebrow"><Zap size={14} /> CHESSARENA · À VOUS DE JOUER</span>
-          <h1>Chaque partie<br />commence par un coup.</h1>
+          <span className="vc-home-eyebrow">BIENVENUE SUR</span>
+          <h1>CHESSARENA</h1>
+          <p className="vc-home-hero__motto">Jouez <i /> Progressez <i /> Partagez</p>
           <p>
-            Bonjour{profile?.username ? ` ${profile.username}` : ""} ! Reprenez votre
-            partie ou lancez un nouveau défi, avec ou sans compte.
+            Bonjour{profile?.username ? ` ${profile.username}` : ""} ! Que vous soyez
+            débutant ou joueur confirmé, trouvez votre prochaine partie.
           </p>
           <div className="vc-home-hero__actions">
             <button type="button" className="vc-home-primary" onClick={() => setTab("play")}>
               <Gamepad2 size={18} />
               {hasActiveGame ? "Reprendre ma partie" : "Jouer maintenant"}
-              <ArrowRight size={16} />
             </button>
-            <button type="button" className="vc-home-secondary" onClick={() => setTab("play")}>
-              <Users size={17} /> Jouer avec un ami
+            <button type="button" className="vc-home-secondary" onClick={() => setTab("learn")}>
+              Que vous soyez débutant ou joueur confirmé
             </button>
-          </div>
-          <div className="vc-home-trust">
-            <span><Clock3 size={14} /> Choisissez votre cadence</span>
-            <span><Swords size={14} /> Invitez par lien</span>
           </div>
         </div>
         <div className="vc-home-hero__board" aria-hidden="true">
@@ -281,7 +299,7 @@ export default function HomePage({ onStartGame }: HomePageProps) {
             <span className="vc-home-board__piece">♞</span>
             <span className="vc-home-board__piece vc-home-board__piece--light">♙</span>
           </div>
-          <span className="vc-home-hero__note">Votre prochain<br />beau coup ?</span>
+          <span className="vc-home-hero__note">Un coup<br />à la fois...</span>
         </div>
       </section>
 
@@ -291,39 +309,79 @@ export default function HomePage({ onStartGame }: HomePageProps) {
         </p>
       )}
 
-      <section className="vc-home-stats" aria-label="Votre bilan">
+      <section className="vc-home-modes">
         <div className="vc-home-section-heading">
           <div>
-            <span className="vc-home-eyebrow">VOTRE PARCOURS</span>
-            <h2>Votre bilan</h2>
+            <h2>Modes de jeu</h2>
           </div>
-          <button type="button" className="vc-home-text-link" onClick={() => setTab("games")}>
-            Voir mes parties <ArrowRight size={15} />
+          <button type="button" className="vc-home-text-link" onClick={() => setTab("play")}>
+            Voir tout <ArrowRight size={15} />
           </button>
         </div>
-        <div className="vc-home-stat-grid">
+        <div className="vc-home-mode-grid">
           {[
-            { label: "Parties jouées", value: stats?.gamesPlayed, icon: <Gamepad2 /> },
-            { label: "Victoires", value: stats?.wins, icon: <Trophy /> },
-            { label: "Défaites", value: stats?.losses, icon: <ChartNoAxesCombined /> },
-            { label: "Nulles", value: stats?.draws, icon: <Clock3 /> },
-          ].map((stat) => (
-            <article className="vc-home-stat" key={stat.label}>
-              <span>{stat.icon}</span>
-              <div>
-                <strong>{loading ? "…" : stat.value ?? "—"}</strong>
-                <small>{stat.label}</small>
-              </div>
+            { title: "Rapide", detail: "Parties de 10 min ou moins", rating: ratings?.modes.find((mode) => mode.category === "RAPID")?.rating ?? 1500, icon: <Zap />, theme: "is-green", action: () => onStartGame(600, 0) },
+            { title: "Classique", detail: "Plus de temps, plus de stratégie", rating: ratings?.modes.find((mode) => mode.category === "CLASSICAL")?.rating ?? 1500, icon: <Clock3 />, theme: "is-blue", action: () => onStartGame(900, 10) },
+            { title: "Blitz", detail: "Parties intenses et rapides", rating: ratings?.modes.find((mode) => mode.category === "BLITZ")?.rating ?? 1500, icon: <Medal />, theme: "is-violet", action: () => onStartGame(180, 0) },
+            { title: "Tournois", detail: "Affrontez la communauté", rating: undefined, icon: <Users />, theme: "is-orange", action: () => setTab("tournaments") },
+          ].map((mode) => (
+            <article className={`vc-home-mode-card ${mode.theme}`} key={mode.title}>
+              <span className="vc-home-mode-card__icon">{mode.icon}</span>
+              <strong>{mode.title}</strong>
+              <small>{mode.detail}</small>
+              {mode.rating !== undefined && (
+                <span className="vc-home-mode-card__rating">{mode.rating} <small>Elo</small></span>
+              )}
+              <button type="button" onClick={mode.action}>
+                {mode.title === "Tournois" ? "Voir" : "Jouer"}
+              </button>
             </article>
           ))}
         </div>
       </section>
 
+      <section className="vc-home-tournaments">
+        <div className="vc-home-section-heading">
+          <h2>Prochains tournois</h2>
+          <button type="button" className="vc-home-text-link" onClick={() => setTab("tournaments")}>
+            Voir tout <ArrowRight size={15} />
+          </button>
+        </div>
+        {upcomingTournaments.length > 0 ? (
+          <div className="vc-home-tournament-grid">
+            {upcomingTournaments.map((tournament, index) => (
+              <article className={`vc-home-tournament-card tone-${index + 1}`} key={tournament.id}>
+                <span className="vc-home-tournament-card__icon">
+                  {index === 0 ? <Trophy /> : index === 1 ? <Medal /> : <CalendarDays />}
+                </span>
+                <div>
+                  <strong>{tournament.name}</strong>
+                  <small>
+                    {tournament.format === "SWISS" ? "Système suisse" : "Toutes rondes"}
+                    {" · "}
+                    {new Date(tournament.startsAt).toLocaleString("fr-FR", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </small>
+                </div>
+                <button type="button" onClick={() => setTab("tournaments")}>Voir</button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="vc-home-tournaments-empty">
+            <CalendarDays size={19} />
+            <span>{loading ? "Chargement des prochains tournois…" : "Aucun tournoi à venir pour le moment."}</span>
+          </div>
+        )}
+      </section>
+
       <section className="vc-home-discover">
         <div className="vc-home-section-heading">
           <div>
-            <span className="vc-home-eyebrow">VOTRE CLUB</span>
-            <h2>Tout pour votre prochaine partie</h2>
+            <span className="vc-home-eyebrow"><BookOpen size={13} /> VOTRE CLUB</span>
+            <h2>Explorez ChessArena</h2>
           </div>
         </div>
         <div className="vc-home-action-grid">

@@ -11,6 +11,7 @@ import {
   Medal,
   Shield,
   ClipboardList,
+  UserRound,
 } from "lucide-react";
 import { useNavigation, type Tab } from "../context/NavigationContext";
 import { useAuth } from "../context/AuthContext";
@@ -27,6 +28,7 @@ const MAIN_NAV: NavItem[] = [
 ];
 
 const COMMUNITY_NAV: NavItem[] = [
+  { id: "profile", label: "Mon profil", icon: <UserRound size={18} /> },
   { id: "rankings", label: "Classements", icon: <BarChart2 size={18} /> },
   { id: "friends", label: "Amis", icon: <Users size={18} /> },
   { id: "messages", label: "Messages", icon: <MessageSquare size={18} /> },
@@ -118,9 +120,9 @@ export default function SidebarLeft() {
 
       {isAuthenticated ? (
         <div className="vc-sidebar-quote">
-        <div className="vc-sidebar-quote__icon">♞</div>
-        <p>Chaque partie est une nouvelle opportunité d'apprendre et de progresser.</p>
-        <span>— CHESSARENA</span>
+          <div className="vc-sidebar-quote__icon">♞</div>
+          <p>Chaque partie est une nouvelle opportunité d'apprendre et de progresser.</p>
+          <span>— CHESSARENA</span>
         </div>
       ) : (
         <section className="vc-guest-signup">

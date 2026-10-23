@@ -1,5 +1,6 @@
 import axios from "axios";
 import type {
+  AxiosRequestConfig,
   AxiosResponse,
   AxiosError,
   AxiosInstance,
@@ -20,7 +21,10 @@ const USER_STORAGE_KEY = "authUser";
 
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
+  skipAuth?: boolean;
 }
+
+export type SkipAuthRequestConfig = AxiosRequestConfig & { skipAuth: true };
 
 let refreshRequest: Promise<string> | null = null;
 
@@ -77,9 +81,12 @@ axiosInstance.interceptors.request.use(
       ?.getAttribute("content");
     config.withCredentials = WITH_CREDENTIALS;
     // Add auth token if available
+    const request = config as RetryableRequestConfig;
     const token = getAccessToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    if (request.skipAuth) {
+      config.headers.delete("Authorization");
+    } else if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     const guestGameId = config.url?.match(/\/games\/guest\/([1-9]\d*)(?:\/|$)/)?.[1];
     const guestSession = guestGameId ? readGuestGameSession() : null;
@@ -109,6 +116,7 @@ axiosInstance.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       request &&
+      !request.skipAuth &&
       !request._retry &&
       !isAuthRequest &&
       Boolean(getAccessToken() || getRefreshToken())

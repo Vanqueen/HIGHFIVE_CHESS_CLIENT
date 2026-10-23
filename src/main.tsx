@@ -6,6 +6,9 @@ import { ReduxProvider } from './app/ReduxProvider.tsx'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext.tsx'
 import { SocketProvider } from './context/SocketContext.tsx'
+import { initializeTheme } from './assets/js/theme.ts'
+
+initializeTheme()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

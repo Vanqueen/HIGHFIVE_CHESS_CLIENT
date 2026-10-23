@@ -1,5 +1,12 @@
 # React + TypeScript + Vite
 
+## Documentation du frontend
+
+- [Paramètres de partie](./docs/parametres-partie.md) : configuration des
+  parties locales, défis en ligne et parties invitées, choix des cadences,
+  couleurs et modes amical ou classé.
+- [Connexion au backend](./docs/connexion-backend.md).
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

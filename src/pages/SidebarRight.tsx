@@ -1,10 +1,63 @@
-import { ArrowRight, Gamepad2, Swords, Trophy, Zap, ShieldCheck, ChartNoAxesColumn, Star } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, BookOpen, Gamepad2, Swords, Trophy, Zap, ShieldCheck, ChartNoAxesColumn, Star } from "lucide-react";
+import axiosInstance from "../axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigation } from "../context/NavigationContext";
 
+type PlayerStats = {
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  draws: number;
+};
+
+type PlayerRatings = {
+  overallRating: number;
+};
+
 export default function SidebarRight() {
   const { profile } = useAuth();
-  const { setTab } = useNavigation();
+  const { setTab, notifications } = useNavigation();
+  const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [statsError, setStatsError] = useState("");
+  const [overallRating, setOverallRating] = useState<number | null>(null);
+  const [ratingsError, setRatingsError] = useState("");
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    let cancelled = false;
+    void axiosInstance.get<PlayerStats>("/users/me/statistics")
+      .then(({ data }) => {
+        if (cancelled) return;
+        setStats(data);
+        setStatsError("");
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setStatsError(error instanceof Error ? error.message : "Impossible de charger vos statistiques.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    let cancelled = false;
+    void axiosInstance.get<PlayerRatings>("/users/me/ratings")
+      .then(({ data }) => {
+        if (cancelled) return;
+        setOverallRating(data.overallRating);
+        setRatingsError("");
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setRatingsError(error instanceof Error ? error.message : "Impossible de charger votre Elo.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
 
   if (!profile?.id) {
     return (
@@ -49,9 +102,23 @@ export default function SidebarRight() {
           </div>
           <div className="vc-profile-card__stats">
             <div className="vc-profile-stat">
-              <span>Un nouveau défi vous attend</span>
-              <strong>À vous de jouer</strong>
+              <span>Parties jouées</span>
+              <strong>{stats?.gamesPlayed ?? (statsError ? "—" : "…")}</strong>
             </div>
+            <div className="vc-profile-stat">
+              <span>Taux de victoire</span>
+              <strong>
+                {stats
+                  ? `${stats.gamesPlayed ? Math.round((stats.wins / stats.gamesPlayed) * 100) : 0}%`
+                  : statsError ? "—" : "…"}
+              </strong>
+            </div>
+            <div className="vc-profile-stat">
+              <span>Elo global</span>
+              <strong>{overallRating ?? (ratingsError ? "—" : "…")}</strong>
+            </div>
+            {statsError && <small role="status" className="vc-profile-stat__error">{statsError}</small>}
+            {ratingsError && <small role="status" className="vc-profile-stat__error">{ratingsError}</small>}
           </div>
         </div>
 
@@ -81,6 +148,34 @@ export default function SidebarRight() {
             <ArrowRight size={16} className="vc-quick-action__arrow" />
           </button>
         </div>
+
+        <section className="vc-recent vc-activity-panel">
+          <h2>Activité récente</h2>
+          {notifications.length ? (
+            <ul>
+              {notifications.slice(0, 3).map((notification) => (
+                <li key={notification.id}>
+                  <span><Zap size={15} /></span>
+                  <p>
+                    <strong>{notification.title}</strong>
+                    <small>{notification.message ?? "Nouvelle activité sur votre compte."}</small>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="vc-activity-empty">Vos notifications de parties et de tournois apparaîtront ici.</p>
+          )}
+        </section>
+
+        <button type="button" className="vc-sidebar-learn" onClick={() => setTab("learn")}>
+          <span className="vc-sidebar-learn__copy">
+            <strong>Apprendre les échecs</strong>
+            <small>Des leçons simples pour progresser à votre rythme.</small>
+            <span>Accéder <ArrowRight size={13} /></span>
+          </span>
+          <BookOpen size={25} aria-hidden="true" />
+        </button>
       </section>
     </aside>
   );

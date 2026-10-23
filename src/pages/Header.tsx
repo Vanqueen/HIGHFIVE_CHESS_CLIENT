@@ -1,57 +1,60 @@
-import { Search, Bell, Home, Gamepad2, BookOpen, Eye, Users, UserRound } from "lucide-react";
+import { Search, Bell, Users, UserRound, Moon, Sun, Menu, Swords } from "lucide-react";
+import { useState } from "react";
 import PlayerProfileMenu from "../components/PlayerProfileMenu";
-import { useNavigation, type Tab } from "../context/NavigationContext";
+import { useNavigation } from "../context/NavigationContext";
 import { useAuth } from "../context/AuthContext";
+import { applyTheme, getInitialTheme, type ThemeMode } from "../assets/js/theme";
 
-type TopNavItem = { id: Tab; label: string };
-
-const TOP_NAV: Array<TopNavItem & { icon: React.ReactNode }> = [
-  { id: "home", label: "Accueil", icon: <Home size={17} /> },
-  { id: "play", label: "Jouer", icon: <Gamepad2 size={17} /> },
-  { id: "learn", label: "Apprendre", icon: <BookOpen size={17} /> },
-  { id: "watch", label: "Regarder", icon: <Eye size={17} /> },
-  { id: "friends", label: "Communauté", icon: <Users size={17} /> },
-];
-
-export default function HeaderPage() {
-  const { tab, setTab, notifications, markAllRead } = useNavigation();
+export default function HeaderPage({ onToggleSidebar }: { onToggleSidebar: () => void }) {
+  const { setTab, notifications, markAllRead } = useNavigation();
   const { profile } = useAuth();
+  const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);
   const isAuthenticated = Boolean(profile?.id);
-  const visibleTopNav = isAuthenticated
-    ? TOP_NAV
-    : TOP_NAV.filter((item) => ["home", "play", "learn"].includes(item.id));
   const unreadCount = notifications.filter((n) => !n.read_status).length;
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    applyTheme(nextTheme);
+    setTheme(nextTheme);
+  };
 
   return (
     <header className="vc-header">
       <div className="vc-header__inner">
-        {/* Logo */}
-        <button className="vc-logo" onClick={() => setTab("home")} aria-label="CHESSARENA, accueil">
-          <span className="vc-logo__icon">♞</span>
-          <span className="vc-logo__text flex flex-col"><span className="text-black!">CHESS</span> ARENA</span>
+        <button
+          type="button"
+          className="vc-header__menu-btn"
+          aria-label="Afficher ou masquer la navigation"
+          onClick={onToggleSidebar}
+        >
+          <Menu size={23} />
         </button>
-
-        {/* Nav principale */}
-        <nav className="vc-top-nav" aria-label="Navigation principale">
-          {visibleTopNav.map((item) => (
-            <button
-              key={item.id}
-              className={`vc-top-nav__item${tab === item.id ? " is-active" : ""}`}
-              onClick={() => setTab(item.id)}
-              aria-current={tab === item.id ? "page" : undefined}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </nav>
+        {/* Logo */}
+        <button className="vc-sidebar-brand" onClick={() => setTab("home")} aria-label="CHESSARENA, accueil">
+          <span aria-hidden="true">♞</span>
+        <strong className="flex flex-col">CHESS<span>ARENA</span></strong>
+        </button>
 
         {/* Actions droite */}
         <div className="vc-header__actions">
+          <button
+            type="button"
+            className="vc-header__icon-btn vc-theme-toggle"
+            aria-label={theme === "dark" ? "Activer le thème clair" : "Activer le thème sombre"}
+            title={theme === "dark" ? "Thème clair" : "Thème sombre"}
+            onClick={toggleTheme}
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           {isAuthenticated ? (
             <>
-              <button className="vc-header__icon-btn" aria-label="Rechercher">
+              <button className="vc-header__icon-btn" aria-label="Rechercher des joueurs" onClick={() => setTab("users")}>
                 <Search size={18} />
+              </button>
+              <button className="vc-header__icon-btn" aria-label="Communauté" onClick={() => setTab("friends")}>
+                <Users size={18} />
+              </button>
+              <button className="vc-header__icon-btn" aria-label="Jouer" onClick={() => setTab("play")}>
+                <Swords size={18} />
               </button>
               <button
                 className="vc-header__icon-btn vc-header__notif-btn"

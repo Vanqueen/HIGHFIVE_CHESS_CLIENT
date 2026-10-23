@@ -11,11 +11,25 @@ import {
   UserRound,
 } from "lucide-react";
 import ChessBoard from "../components/ChessBoard";
+import ColorPreferenceSelector, {
+  type ColorPreference,
+} from "../components/ColorPreferenceSelector";
+import GameSetupControls, {
+  type TimeControlPreset,
+} from "../components/GameSetupControls";
 import { chooseComputerMove } from "../chess/computerPlayer";
 
 type Difficulty = "easy" | "medium" | "hard";
 type PlayerColor = "WHITE" | "BLACK";
 type ComputerGamePageProps = { onExit?: () => void };
+
+const COMPUTER_TIME_PRESETS: TimeControlPreset[] = [
+  { initialTimeSeconds: 60, incrementSeconds: 0, label: "1 min" },
+  { initialTimeSeconds: 180, incrementSeconds: 0, label: "3 min" },
+  { initialTimeSeconds: 300, incrementSeconds: 0, label: "5 min" },
+  { initialTimeSeconds: 600, incrementSeconds: 0, label: "10 min" },
+  { initialTimeSeconds: 900, incrementSeconds: 0, label: "15 min" },
+];
 
 function difficultyLabel(difficulty: Difficulty) {
   return ({ easy: "Facile", medium: "Intermédiaire", hard: "Difficile" })[difficulty];
@@ -37,6 +51,7 @@ function gameResult(chess: Chess, playerColor: PlayerColor) {
 export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
   const [fen, setFen] = useState(() => new Chess().fen());
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [colorPreference, setColorPreference] = useState<ColorPreference>("RANDOM");
   const [playerColor, setPlayerColor] = useState<PlayerColor>("WHITE");
   const [initialTimeSeconds, setInitialTimeSeconds] = useState(300);
   const [started, setStarted] = useState(false);
@@ -134,7 +149,11 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
   };
 
   const startGame = () => {
+    const nextPlayerColor: PlayerColor = colorPreference === "RANDOM"
+      ? (Math.random() < 0.5 ? "WHITE" : "BLACK")
+      : colorPreference;
     const nextChess = new Chess();
+    setPlayerColor(nextPlayerColor);
     setFen(nextChess.fen());
     setMoves([]);
     setLastMove(null);
@@ -142,7 +161,7 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
     setSelectedSquare(null);
     setLegalTargets([]);
     setSecondsLeft({ WHITE: initialTimeSeconds, BLACK: initialTimeSeconds });
-    setThinking(playerColor === "BLACK");
+    setThinking(nextPlayerColor === "BLACK");
     setStarted(true);
   };
 
@@ -151,12 +170,12 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
 
   if (!started) {
     return (
-      <main className="player-dashboard vc-play-page">
-        <section className="welcome-line">
+      <main className="vc-computer-setup">
+        <section className="vc-computer-setup__header">
           <div>
             <p className="eyebrow">PARTIE LOCALE</p>
             <h1>Jouer contre l’ordinateur</h1>
-            <p className="welcome-line__text">Choisissez votre couleur, la cadence et le niveau avant de commencer.</p>
+            <p>Choisissez votre couleur, la cadence et le niveau avant de commencer.</p>
           </div>
           {onExit && (
             <button type="button" onClick={onExit} className="vc-game-back">
@@ -164,52 +183,47 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
             </button>
           )}
         </section>
-        <section className="mx-auto grid w-full max-w-2xl gap-5 rounded-2xl border border-slate-700 bg-slate-900/70 p-5 sm:grid-cols-2">
-          <label className="text-sm text-slate-300">
-            Votre couleur
-            <select
-              value={playerColor}
-              onChange={(event) => setPlayerColor(event.target.value as PlayerColor)}
-              className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
+        <section className="vc-computer-settings">
+          <div className="vc-computer-settings__intro">
+            <span className="vc-computer-settings__icon"><Bot size={19} /></span>
+            <div>
+              <h2>Paramètres de la partie</h2>
+              <p>Une partie locale, sans classement.</p>
+            </div>
+          </div>
+          <div className="vc-computer-settings__grid">
+            <GameSetupControls
+              initialTimeSeconds={initialTimeSeconds}
+              incrementSeconds={0}
+              onTimeControlChange={(seconds) => setInitialTimeSeconds(seconds)}
+              rated={false}
+              ratedAvailable={false}
+              ratedUnavailableReason="Une partie contre l’ordinateur ne modifie pas votre Elo."
+              presets={COMPUTER_TIME_PRESETS}
+            />
+            <ColorPreferenceSelector
+              value={colorPreference}
+              onChange={setColorPreference}
+            />
+            <label className="vc-computer-settings__field">
+              Niveau de l’ordinateur
+              <select
+                value={difficulty}
+                onChange={(event) => setDifficulty(event.target.value as Difficulty)}
+              >
+                <option value="easy">Facile</option>
+                <option value="medium">Intermédiaire</option>
+                <option value="hard">Difficile</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={startGame}
+              className="vc-computer-settings__start"
             >
-              <option value="WHITE">Blancs — jouer en premier</option>
-              <option value="BLACK">Noirs — laisser l’ordinateur commencer</option>
-            </select>
-          </label>
-          <label className="text-sm text-slate-300">
-            Niveau de l’ordinateur
-            <select
-              value={difficulty}
-              onChange={(event) => setDifficulty(event.target.value as Difficulty)}
-              className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
-            >
-              <option value="easy">Facile</option>
-              <option value="medium">Intermédiaire</option>
-              <option value="hard">Difficile</option>
-            </select>
-          </label>
-          <label className="text-sm text-slate-300 sm:col-span-2">
-            Cadence
-            <select
-              value={initialTimeSeconds}
-              onChange={(event) => setInitialTimeSeconds(Number(event.target.value))}
-              className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
-            >
-              <option value={0}>Sans limite</option>
-              <option value={60}>1 minute</option>
-              <option value={180}>3 minutes</option>
-              <option value={300}>5 minutes</option>
-              <option value={600}>10 minutes</option>
-              <option value={900}>15 minutes</option>
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={startGame}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-amber-200 sm:col-span-2"
-          >
-            <Play size={17} fill="currentColor" /> Commencer la partie
-          </button>
+              <Play size={16} fill="currentColor" /> Commencer la partie
+            </button>
+          </div>
         </section>
       </main>
     );

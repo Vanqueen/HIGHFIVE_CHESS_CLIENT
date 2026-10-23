@@ -40,8 +40,8 @@ export default function UsersPage({ onOpenMessages }: Props) {
   const refresh = useCallback(async () => {
     try {
       const [{ data: friendshipData }, { data: blockData }] = await Promise.all([
-        axiosInstance.get<Friendship[]>("/friendships/me"),
-        axiosInstance.get<Block[]>("/blocked-users/me"),
+        axiosInstance.get<Friendship[]>("/social/friendships/me"),
+        axiosInstance.get<Block[]>("/social/blocked-users/me"),
       ]);
       setFriendships(friendshipData);
       setBlocks(blockData);
@@ -65,7 +65,7 @@ export default function UsersPage({ onOpenMessages }: Props) {
     setNotice("");
     try {
       if (action === "friend") {
-        await axiosInstance.post(`/friendships/${targetPlayer.id}`);
+        await axiosInstance.post(`/social/friendships/${targetPlayer.id}`);
         setNotice(`Demande d’amitié envoyée à ${targetPlayer.username}.`);
       } else {
         await axiosInstance.post(`/blocked-users/${targetPlayer.id}`);
@@ -85,8 +85,8 @@ export default function UsersPage({ onOpenMessages }: Props) {
     setError("");
     setNotice("");
     try {
-      if (action === "delete") await axiosInstance.delete(`/friendships/${friendship.id}`);
-      else await axiosInstance.post(`/friendships/${friendship.id}/${action}`);
+      if (action === "delete") await axiosInstance.delete(`/social/friendships/${friendship.id}`);
+      else await axiosInstance.post(`/social/friendships/${friendship.id}/${action}`);
       setNotice(action === "accept" ? "Demande acceptée." : action === "reject" ? "Demande refusée." : "Amitié supprimée.");
       await refresh();
     } catch (requestError) {

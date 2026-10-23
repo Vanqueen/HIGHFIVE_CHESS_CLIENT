@@ -5,6 +5,7 @@ import { useSocket } from "./SocketContextValue";
 
 export type Tab =
   | "home"
+  | "profile"
   | "play"
   | "computer"
   | "games"

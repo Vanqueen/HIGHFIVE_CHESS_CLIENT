@@ -19,10 +19,8 @@ import BoardEditorPage from "./BoardEditorPage";
 import AchievementsPage from "./AchievementsPage";
 import OrganizerDashboardPage from "./OrganizerDashboardPage";
 import AdminDashboardPage from "./AdminDashboardPage";
+import ProfilePage from "./ProfilePage";
 import { useAuth } from "../context/AuthContext";
-
-// Pages qui utilisent le layout pleine largeur (sans sidebars)
-const FULL_WIDTH_TABS = new Set(["play", "computer", "games"]);
 
 export default function MainApp() {
   const { tab, setTab, notifications } = useNavigation();
@@ -33,13 +31,12 @@ export default function MainApp() {
     incrementSeconds: 0,
   });
   const [autoStartGame, setAutoStartGame] = useState(false);
-  const isFullWidth = FULL_WIDTH_TABS.has(tab);
-
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   return (
-    <div className="vc-app">
-      <HeaderPage />
-      <div className={`vc-layout${isFullWidth ? " vc-layout--full" : ""}`}>
-        {!isFullWidth && <SidebarLeft />}
+    <div className={`vc-app${sidebarCollapsed ? " vc-app--sidebar-collapsed" : ""}`}>
+      <HeaderPage onToggleSidebar={() => setSidebarCollapsed((collapsed) => !collapsed)} />
+      <div className="vc-layout">
+        <SidebarLeft />
 
         <main className="vc-main">
           {tab === "home" && (
@@ -51,6 +48,7 @@ export default function MainApp() {
               }}
             />
           )}
+          {tab === "profile" && <ProfilePage />}
           {tab === "play" && (
             <PlayPage
               onNavigate={(t) => setTab(t as typeof tab)}
@@ -94,7 +92,7 @@ export default function MainApp() {
           {tab === "admin" && profile?.role === "ADMIN" && <AdminDashboardPage />}
         </main>
 
-        {!isFullWidth && tab === "home" && <SidebarRight />}
+        {tab === "home" && <SidebarRight />}
       </div>
     </div>
   );

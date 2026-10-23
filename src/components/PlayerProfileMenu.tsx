@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Award, Check, ChevronDown, Gamepad2, LogOut, Swords, X } from "lucide-react";
+import { Award, Check, ChevronDown, Gamepad2, LogOut, Swords, UserRound, X } from "lucide-react";
 import axiosInstance from "../axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigation } from "../context/NavigationContext";
@@ -66,7 +66,7 @@ export default function PlayerProfileMenu() {
     };
   }, [open, statistics]);
 
-  const openTab = (tab: "play" | "games") => {
+  const openTab = (tab: "play" | "games" | "profile") => {
     setTab(tab);
     setOpen(false);
   };
@@ -148,6 +148,9 @@ export default function PlayerProfileMenu() {
           </div>
 
           <div className="player-profile-menu__actions">
+            <button type="button" onClick={() => openTab("profile")}>
+              <UserRound size={17} /> Mon profil
+            </button>
             <button type="button" onClick={() => openTab("games")}>
               <Gamepad2 size={17} /> Mes parties
             </button>
