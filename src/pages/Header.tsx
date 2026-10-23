@@ -31,7 +31,7 @@ export default function HeaderPage({ onToggleSidebar }: { onToggleSidebar: () =>
         {/* Logo */}
         <button className="vc-sidebar-brand" onClick={() => setTab("home")} aria-label="CHESSARENA, accueil">
           <span aria-hidden="true">♞</span>
-        <strong className="flex flex-col">CHESS<span>ARENA</span></strong>
+          <strong className="flex flex-col">CHESS<span>ARENA</span></strong>
         </button>
 
         {/* Actions droite */}

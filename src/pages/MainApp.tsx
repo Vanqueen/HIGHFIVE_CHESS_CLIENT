@@ -32,11 +32,24 @@ export default function MainApp() {
   });
   const [autoStartGame, setAutoStartGame] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const closeSidebarOnMobile = () => {
+    if (window.matchMedia("(max-width: 820px)").matches) {
+      setSidebarCollapsed(false);
+    }
+  };
   return (
     <div className={`vc-app${sidebarCollapsed ? " vc-app--sidebar-collapsed" : ""}`}>
       <HeaderPage onToggleSidebar={() => setSidebarCollapsed((collapsed) => !collapsed)} />
+      {sidebarCollapsed && (
+        <button
+          type="button"
+          className="vc-sidebar-backdrop"
+          aria-label="Fermer le menu"
+          onClick={() => setSidebarCollapsed(false)}
+        />
+      )}
       <div className="vc-layout">
-        <SidebarLeft />
+        <SidebarLeft onNavigate={closeSidebarOnMobile} />
 
         <main className="vc-main">
           {tab === "home" && (

@@ -1401,7 +1401,7 @@ export default function PlayPage({
         </a>
 
         {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-500">{error}</p>}
-        {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-500">{notice}</p>}
+        {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900">{notice}</p>}
 
         <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
           <div>
@@ -1415,7 +1415,7 @@ export default function PlayPage({
             <button
               type="button"
               onClick={cancelMatchmaking}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-600"
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-gray-300 dark:text-white hover:bg-slate-600"
             >
               <LoaderCircle className="h-4 w-4 animate-spin" /> Annuler la recherche
             </button>
@@ -1533,7 +1533,7 @@ export default function PlayPage({
   const history = challenges.filter((challenge) => challenge.status !== "PENDING").slice(0, 5);
 
   return (
-    <div className="player-dashboard vc-play-page">
+    <div className="player-dashboard vc-play-page px-2">
       <section className="welcome-line">
         <div>
           <p className="eyebrow">VOTRE ESPACE DE JEU</p>
@@ -1543,7 +1543,7 @@ export default function PlayPage({
       </section>
 
       {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p>}
-      {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{notice}</p>}
+      {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">{notice}</p>}
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
         <div>
           <p className="eyebrow">PARTIE RAPIDE</p>
@@ -1556,7 +1556,7 @@ export default function PlayPage({
           <button
             type="button"
             onClick={cancelMatchmaking}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-600"
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-gray-300 dark:text-white hover:bg-slate-600"
           >
             <LoaderCircle className="h-4 w-4 animate-spin" /> Annuler la recherche
           </button>
@@ -1586,22 +1586,22 @@ export default function PlayPage({
         <p className="text-sm text-slate-400">Chargement du joueur associé au lien…</p>
       )}
 
-      <section className="grid gap-4 sm:grid-cols-4" aria-label="Statistiques">
+      <section className="grid grid-cols-2 gap-4 sm:grid-cols-4 min-w-0 w-full" aria-label="Statistiques">
         {[
           ["Parties", stats?.gamesPlayed],
           ["Victoires", stats?.wins],
           ["Défaites", stats?.losses],
           ["Nulles", stats?.draws],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <div key={label} className="rounded-xl border border-slate-700 bg-slate-900/60 p-3 w-full">
             <p className="text-xs text-slate-400">{label}</p>
-            <strong className="mt-1 block text-2xl text-white">{value ?? "—"}</strong>
+            <strong className="mt-1 text-2xl text-white">{value ?? "—"}</strong>
           </div>
         ))}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.8fr)]">
-        <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-5">
+        <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-3">
           <div className="mb-4">
             <p className="eyebrow">NOUVEAU MATCH</p>
             <h2 className="text-xl font-semibold text-white">
@@ -1701,7 +1701,7 @@ export default function PlayPage({
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-5">
+        <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-3">
           <div className="mb-4 flex items-center justify-between">
             <div><p className="eyebrow">VOTRE COMPTE</p><h2 className="text-xl font-semibold text-white">Accès rapides</h2></div>
           </div>
