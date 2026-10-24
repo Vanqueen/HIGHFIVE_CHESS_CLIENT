@@ -25,6 +25,7 @@ import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContextValue";
 import axiosInstance, { type SkipAuthRequestConfig } from "../axios";
 import ChessBoard from "../components/ChessBoard";
+import ChessBoardPreferences from "../components/ChessBoardPreferences";
 import ColorPreferenceSelector, {
   type ColorPreference,
 } from "../components/ColorPreferenceSelector";
@@ -1261,6 +1262,7 @@ export default function PlayPage({
                 <strong>{renderClock(ownClock)}</strong>
               </span>
             </div>
+            <ChessBoardPreferences />
             {activeGame.status === "WAITING" && (
               <p className="vc-game-status">
                 {gamePlayersReady
@@ -1457,6 +1459,7 @@ export default function PlayPage({
                 value={colorPreference}
                 onChange={setColorPreference}
               />
+              <ChessBoardPreferences />
               <p className="mt-2 text-xs text-slate-500">
                 Votre adversaire recevra l’autre couleur.
               </p>
@@ -1653,6 +1656,7 @@ export default function PlayPage({
                 value={colorPreference}
                 onChange={setColorPreference}
               />
+              <ChessBoardPreferences />
               <span className="mt-1 block text-slate-500">
                 Votre adversaire recevra automatiquement l’autre couleur.
               </span>

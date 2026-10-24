@@ -11,6 +11,7 @@ import {
   UserRound,
 } from "lucide-react";
 import ChessBoard from "../components/ChessBoard";
+import ChessBoardPreferences from "../components/ChessBoardPreferences";
 import ColorPreferenceSelector, {
   type ColorPreference,
 } from "../components/ColorPreferenceSelector";
@@ -205,6 +206,7 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
               value={colorPreference}
               onChange={setColorPreference}
             />
+            <ChessBoardPreferences />
             <label className="vc-computer-settings__field">
               Niveau de l’ordinateur
               <select
@@ -274,6 +276,7 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
             </span>
             <span className="vc-game-clock"><Clock3 size={19} /><strong>{initialTimeSeconds === 0 ? "∞" : formatTime(secondsLeft[playerColor])}</strong></span>
           </div>
+          <ChessBoardPreferences />
           {thinking && <p className="vc-game-status"><LoaderCircle size={15} className="animate-spin" /> L’ordinateur réfléchit…</p>}
         </section>
 

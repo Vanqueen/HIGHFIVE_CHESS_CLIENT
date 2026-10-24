@@ -33,7 +33,7 @@ export default function MainApp() {
   const [autoStartGame, setAutoStartGame] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const closeSidebarOnMobile = () => {
-    if (window.matchMedia("(max-width: 820px)").matches) {
+    if (window.matchMedia("(max-width: 1100px)").matches) {
       setSidebarCollapsed(false);
     }
   };

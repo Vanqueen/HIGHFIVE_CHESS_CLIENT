@@ -1,13 +1,21 @@
 import { useState, type ChangeEvent } from 'react';
-import { Crown } from 'lucide-react';
+import { Crown, Eye, EyeOff, ShieldCheck, Sparkles, StepBack } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 type AuthPageProps = {
   onAuthSuccess: () => void;
 };
 
-// const DEMO_EMAIL = 'demo@chessarena.app';
-// const DEMO_PASSWORD = 'ChessArena!2026#Demo';
+const BOARD_ROWS = [
+  '♜♞♝♛♚♝♞♜',
+  '♟♟♟♟♟♟♟♟',
+  '........',
+  '........',
+  '........',
+  '........',
+  '♙♙♙♙♙♙♙♙',
+  '♖♘♗♕♔♗♘♖',
+];
 
 export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -15,6 +23,8 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { register, login } = useAuth();
 
@@ -29,8 +39,6 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
     return score;
   })();
 
-  const isPasswordWeak = mode === 'signup' && password.length > 0 && passwordScore < 3;
-
   const handleChangeName = (e: ChangeEvent<HTMLInputElement>) => {
     setUsername(e.target.value);
   };
@@ -43,12 +51,20 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
     setPassword(e.target.value);
   };
 
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+  const changeMode = (nextMode: 'signin' | 'signup') => {
+    setMode(nextMode);
+    setError(null);
+    setNotice(null);
+    setShowPassword(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    setNotice(null);
 
     if (mode === 'signup' && passwordScore < 3) {
-      setError('Mot de passe trop faible : utilisez au moins 8 caracteres avec des majuscules, minuscules et chiffres.');
+      setError('Mot de passe trop faible : utilisez au moins 8 caractères avec des majuscules, minuscules et chiffres.');
       return;
     }
 
@@ -58,14 +74,13 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
       if (mode === 'signup') {
         const response = await register({ username, email, password });
         if (response.success === false) {
-          setError(response.message || 'Erreur lors de la creation du compte.');
+          setError(response.message || 'Erreur lors de la création du compte.');
         } else {
-          onAuthSuccess();
-          setError('Compte cree ! Vous pouvez maintenant vous connecter.');
-          setMode('signin');
+          setPassword('');
+          changeMode('signin');
+          setNotice('Compte créé ! Vous pouvez maintenant vous connecter.');
         }
       } else {
-        // const { error } = await supabase.auth.signInWithPassword({ email, password });
         const response = await login({ email, password });
         if (response.success === false) {
           setError(response.message || 'Erreur lors de la connexion.');
@@ -77,9 +92,9 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
       const msg = err instanceof Error ? err.message : 'Une erreur est survenue';
       const loweredMessage = msg.toLowerCase();
       if (loweredMessage.includes('weak') || loweredMessage.includes('pwned')) {
-        setError('Ce mot de passe a ete signale dans des fuites connues. Choisissez une combinaison totalement differente.');
+        setError('Ce mot de passe a été signalé dans des fuites connues. Choisissez une combinaison totalement différente.');
       } else if (loweredMessage.includes('invalid login credentials')) {
-        setError('Email ou mot de passe incorrect. Verifiez vos informations puis reessayez.');
+        setError('Email ou mot de passe incorrect. Vérifiez vos informations puis réessayez.');
       } else {
         setError(msg);
       }
@@ -88,149 +103,214 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
-    if (e.key === 'Enter') handleSubmit(e as unknown as React.SyntheticEvent<HTMLFormElement>);
-  };
-
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+    <main className="auth-page">
+      <div className="auth-page__ambient" aria-hidden="true">
+        <span />
+        <span />
       </div>
 
-      <div className="relative w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-linear-to-br from-amber-400 to-amber-600 rounded-2xl shadow-lg shadow-amber-500/30 mb-4">
-            <Crown className="w-9 h-9 text-slate-900" />
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">ChessArena</h1>
-          <p className="text-slate-400 mt-2">Jouez aux echecs en ligne</p>
-        </div>
+      <div className="auth-layout">
+        <section className="auth-panel auth-panel--form">
+          <a className="auth-brand" href="/" aria-label="ChessArena, accueil">
+            <span className="auth-brand__mark"><Crown size={23} strokeWidth={2.2} /></span>
+            <span className="auth-brand__name">CHESS<span>ARENA</span></span>
+          </a>
 
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-          <div className="flex gap-1 p-1 bg-slate-900/50 rounded-xl mb-6">
-            <button
-              onClick={() => setMode('signin')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                mode === 'signin'
-                  ? 'bg-amber-500 text-slate-900'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Connexion
-            </button>
-            <button
-              onClick={() => setMode('signup')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                mode === 'signup'
-                  ? 'bg-amber-500 text-slate-900'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Inscription
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="space-y-4">
-            {mode === 'signup' && (
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                  Nom d'utilisateur
-                </label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={handleChangeName}
-                  required
-                  minLength={3}
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-transparent transition-all"
-                  placeholder="Votre pseudo"
-                />
+          <div className="auth-content">
+            <header className="auth-intro">
+              <div className='flex justify-between items-center gap-2'>
+                <p className="auth-eyebrow"><Sparkles size={14} /> Votre prochaine partie vous attend</p>
+                <span className='flex items-center gap-2 text-xs text-slate-500'>
+                  <StepBack />
+                  <a href="/">Accueil</a>
+                </span>
               </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={handleChangeEmail}
-                required
-                className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-transparent transition-all"
-                placeholder="vous@exemple.com"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Mot de passe
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={handleChangePassword}
-                required
-                minLength={8}
-                className={`w-full px-4 py-2.5 bg-slate-900/50 border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
-                  isPasswordWeak
-                    ? 'border-rose-500/50 focus:ring-rose-500/50'
-                    : 'border-slate-700 focus:ring-amber-500/50'
-                }`}
-                placeholder="Min. 8 caracteres, majuscules et chiffres"
-              />
-              {mode === 'signup' && password.length > 0 && (
-                <div className="mt-2 space-y-1.5">
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((i) => {
-                      const barColor = i > passwordScore
-                        ? 'bg-slate-700'
-                        : passwordScore < 3
-                          ? 'bg-rose-500'
-                          : passwordScore < 4
-                            ? 'bg-amber-500'
-                            : 'bg-green-500';
-                      return <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${barColor}`} />;
-                    })}
+              <h1>{mode === 'signin' ? 'Heureux de vous revoir.' : 'Entrez dans la partie.'}</h1>
+              <p>
+                {mode === 'signin'
+                  ? 'Connectez-vous pour retrouver vos parties et votre progression.'
+                  : 'Créez votre compte et rejoignez la communauté ChessArena.'}
+              </p>
+            </header>
+
+            <div className="auth-card">
+              <div className="auth-tabs" role="tablist" aria-label="Connexion ou inscription">
+                <button
+                  type="button"
+                  role="tab"
+                  id="auth-tab-signin"
+                  aria-selected={mode === 'signin'}
+                  aria-controls="auth-form-panel"
+                  className={mode === 'signin' ? 'is-active' : ''}
+                  onClick={() => changeMode('signin')}
+                >
+                  Connexion
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="auth-tab-signup"
+                  aria-selected={mode === 'signup'}
+                  aria-controls="auth-form-panel"
+                  className={mode === 'signup' ? 'is-active' : ''}
+                  onClick={() => changeMode('signup')}
+                >
+                  Inscription
+                </button>
+              </div>
+
+              <form
+                id="auth-form-panel"
+                role="tabpanel"
+                aria-labelledby={mode === 'signin' ? 'auth-tab-signin' : 'auth-tab-signup'}
+                className="auth-form"
+                onSubmit={handleSubmit}
+              >
+                {mode === 'signup' && (
+                  <div className="auth-field">
+                    <label htmlFor="auth-username">Nom d'utilisateur</label>
+                    <input
+                      id="auth-username"
+                      name="username"
+                      type="text"
+                      value={username}
+                      onChange={handleChangeName}
+                      autoComplete="username"
+                      required
+                      minLength={3}
+                      maxLength={20}
+                      placeholder="Votre pseudo"
+                    />
                   </div>
-                  <p className={`text-xs ${
-                    passwordScore < 3 ? 'text-rose-400' : passwordScore < 4 ? 'text-amber-400' : 'text-green-400'
-                  }`}>
-                    {passwordScore < 3
-                      ? 'Mot de passe faible : ajoutez majuscules, chiffres et symboles'
-                      : passwordScore < 4
-                        ? 'Mot de passe correct'
-                        : 'Mot de passe solide'
-                    }
-                  </p>
+                )}
+
+                <div className="auth-field">
+                  <label htmlFor="auth-email">Adresse e-mail</label>
+                  <input
+                    id="auth-email"
+                    name="email"
+                    type="email"
+                    value={email}
+                    onChange={handleChangeEmail}
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    required
+                    placeholder="vous@exemple.com"
+                  />
                 </div>
+
+                <div className="auth-field">
+                  <label htmlFor="auth-password">Mot de passe</label>
+                  <div className="auth-password">
+                    <input
+                      id="auth-password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={handleChangePassword}
+                      autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                      required
+                      minLength={mode === 'signup' ? 8 : undefined}
+                      placeholder={mode === 'signup' ? '8 caractères minimum' : 'Votre mot de passe'}
+                      aria-describedby={mode === 'signup' ? 'auth-password-strength' : undefined}
+                    />
+                    <button
+                      type="button"
+                      className="auth-password__toggle"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+
+                  {mode === 'signup' && password.length > 0 && (
+                    <div className={`auth-strength auth-strength--${passwordScore < 3 ? 'weak' : passwordScore < 4 ? 'medium' : 'strong'}`} id="auth-password-strength">
+                      <div className="auth-strength__bars" aria-hidden="true">
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <span key={level} className={level <= passwordScore ? 'is-filled' : ''} />
+                        ))}
+                      </div>
+                      <span>
+                        {passwordScore < 3
+                          ? 'Mot de passe trop faible'
+                          : passwordScore < 4
+                            ? 'Mot de passe correct'
+                            : 'Mot de passe solide'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {error && <p className="auth-feedback auth-feedback--error" role="alert">{error}</p>}
+                {notice && <p className="auth-feedback auth-feedback--success" role="status">{notice}</p>}
+
+                <button className="auth-submit" type="submit" disabled={loading}>
+                  {loading
+                    ? 'Connexion en cours…'
+                    : mode === 'signin'
+                      ? 'Se connecter'
+                      : 'Créer mon compte'}
+                </button>
+              </form>
+
+              <p className="auth-card__footnote">
+                <ShieldCheck size={15} />
+                Vos informations restent protégées.
+              </p>
+            </div>
+
+            <p className="auth-terms">
+              En continuant, vous acceptez de jouer loyalement et de respecter la communauté.
+            </p>
+          </div>
+
+          <footer className="auth-footer">© 2026 ChessArena · Le jeu, à votre rythme.</footer>
+        </section>
+
+        <aside className="auth-panel auth-panel--visual" aria-label="Découvrez ChessArena">
+          <div className="auth-visual__glow" aria-hidden="true" />
+          <div className="auth-visual__topline">
+            <span className="auth-visual__status"><i /> La communauté est en ligne</span>
+            <span className="auth-visual__edition">ÉDITION 2026</span>
+          </div>
+
+          <div className="auth-visual__content">
+            <p className="auth-eyebrow">Plus qu'un jeu. Votre prochain coup.</p>
+            <h2>La stratégie<br />prend vie <span>ici.</span></h2>
+            <p className="auth-visual__description">
+              Jouez, progressez et partagez chaque partie avec des passionnés d'échecs.
+            </p>
+
+            <div className="auth-board" aria-hidden="true">
+              {BOARD_ROWS.flatMap((row, rowIndex) =>
+                [...row].map((piece, columnIndex) => (
+                  <span
+                    key={`${rowIndex}-${columnIndex}`}
+                    className={`auth-board__square ${(rowIndex + columnIndex) % 2 === 0 ? 'is-light' : 'is-dark'}`}
+                  >
+                    {piece !== '.' && (
+                      <span className={`auth-board__piece ${rowIndex < 2 ? 'is-black' : 'is-white'}`}>
+                        {piece}
+                      </span>
+                    )}
+                  </span>
+                )),
               )}
             </div>
+          </div>
 
-            {error && (
-              <div className="text-sm text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-4 py-2.5">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-linear-to-r from-amber-400 to-amber-600 text-slate-900 font-semibold rounded-xl hover:from-amber-300 hover:to-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-500/20"
-            >
-              {loading
-                ? 'Chargement...'
-                : mode === 'signin'
-                  ? 'Se connecter'
-                  : 'Creer un compte'}
-            </button>
-          </form>
-        </div>
-
-        <p className="text-center text-slate-500 text-sm mt-6">
-          En vous inscrivant, vous acceptez de jouer loyalement.
-        </p>
+          <div className="auth-visual__footer">
+            <div>
+              <strong>Chaque partie compte.</strong>
+              <span>Votre échiquier vous attend.</span>
+            </div>
+            <span className="auth-visual__knight" aria-hidden="true">♞</span>
+          </div>
+        </aside>
       </div>
-    </div>
+    </main>
   );
 }

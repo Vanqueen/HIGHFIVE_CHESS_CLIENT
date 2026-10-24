@@ -292,6 +292,14 @@ export default function HomePage({ onStartGame }: HomePageProps) {
             <button type="button" className="vc-home-secondary" onClick={() => setTab("learn")}>
               Que vous soyez débutant ou joueur confirmé
             </button>
+            <button
+              type="button"
+              className="vc-home-secondary vc-home-computer"
+              onClick={() => setTab("computer")}
+            >
+              <Bot size={17} aria-hidden="true" />
+              Jouer contre l’ordinateur
+            </button>
           </div>
         </div>
         <div className="vc-home-hero__board" aria-hidden="true">

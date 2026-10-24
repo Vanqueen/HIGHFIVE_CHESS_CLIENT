@@ -111,7 +111,7 @@ export default function SidebarLeft({ onNavigate }: { onNavigate: () => void }) 
   };
 
   return (
-    <aside className="vc-sidebar-left sticky top-17.5 flex! flex-col! justify-between! border-r border-solid bg-[#f7f9fa]">
+    <aside className="vc-sidebar-left">
       <nav className="vc-sidebar-nav" aria-label="Navigation principale">
         {groups.map((group) => {
           const expanded = openGroup === group.id;
@@ -120,7 +120,7 @@ export default function SidebarLeft({ onNavigate }: { onNavigate: () => void }) 
             <section className="vc-sidebar-nav__group" key={group.id}>
               <button
                 type="button"
-                className={`vc-sidebar-nav__group-trigger${expanded ? " is-expanded" : ""} px-4!`}
+                className={`vc-sidebar-nav__group-trigger${expanded ? " is-expanded" : ""}`}
                 aria-expanded={expanded}
                 aria-controls={groupId}
                 onClick={() => setOpenGroup(expanded ? null : group.id)}
@@ -134,7 +134,7 @@ export default function SidebarLeft({ onNavigate }: { onNavigate: () => void }) 
                   <li key={item.id}>
                     <button
                       type="button"
-                      className={`vc-sidebar-nav__item${tab === item.id ? " is-active" : ""} ml-6! mt-1`}
+                      className={`vc-sidebar-nav__item${tab === item.id ? " is-active" : ""} mt-1`}
                       onClick={() => navigateTo(item.id)}
                       aria-current={tab === item.id ? "page" : undefined}
                     >
@@ -148,19 +148,23 @@ export default function SidebarLeft({ onNavigate }: { onNavigate: () => void }) 
           );
         })}
       </nav>
-      <div className="flex-1! flex-end!">
+      <div className="flex justify-end w-full">
         {isAuthenticated ? (
-          <div className="vc-sidebar-quote">
+          <div className="vc-sidebar-quote min-h-65 relative flex flex-col items-start justify-end overflow-hidden mt-2.5 px-6 py-4 rounded-xl text-[#344e68]">
             <div className="vc-sidebar-quote__icon">♞</div>
             <p>Chaque partie est une nouvelle opportunité d'apprendre et de progresser.</p>
             <span>— CHESSARENA</span>
           </div>
         ) : (
-          <section className="vc-guest-signup">
-            <span className="vc-guest-signup__piece" aria-hidden="true">♞</span>
-            <strong>Bienvenue sur CHESSARENA !</strong>
-            <p>Même sans compte, tu peux jouer, apprendre et t’amuser.</p>
-            <a href="/auth">Créer un compte</a>
+          <section className="vc-guest-signup min-h-50 relative flex flex-col justify-between items-start gap-2 mt-auto p-4 overflow-hidden border border-solid border-[#ece8e1] rounded-xl">
+            <span className="vc-guest-signup__piece justify-self-center text-[#65756b] text-5xl" aria-hidden="true">♞</span>
+            <div className="flex flex-col gap-y-4">
+              <div>
+                <strong className="text-xs">Bienvenue sur CHESSARENA !</strong>
+                <p>Même sans compte, tu peux jouer, apprendre et t’amuser.</p>
+              </div>
+              <a href="/auth">Créer un compte</a>
+            </div>
           </section>
         )}
       </div>
