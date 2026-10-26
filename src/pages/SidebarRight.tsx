@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, BookOpen, Gamepad2, Swords, Trophy } from "lucide-react";
+import { ArrowRight, BookOpen, Gamepad2, Swords, Trophy, Zap } from "lucide-react";
 import axiosInstance from "../axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigation } from "../context/NavigationContext";

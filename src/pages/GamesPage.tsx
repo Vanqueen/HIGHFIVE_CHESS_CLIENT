@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Square } from "chess.js";
 import { ArrowLeft, CheckCircle2, Clock3, Crown, Eye, XCircle } from "lucide-react";
 import type { AxiosError } from "axios";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../axios";
 import ChessBoard from "../components/ChessBoard";
+import ChessBoardPreferences from "../components/ChessBoardPreferences";
+import MoveReviewControls from "../components/MoveReviewControls";
+import { buildMovePositions } from "../chess/moveHistory";
 
 type BackendGame = {
   id: number;
@@ -32,6 +35,13 @@ type BackendMove = {
 type GameDetails = {
   game: BackendGame;
   participants: GameParticipant[];
+};
+
+type PublicPlayer = {
+  id: number;
+  username: string;
+  avatarUrl: string | null;
+  overallRating: number;
 };
 
 type GamesPageProps = {
@@ -78,9 +88,25 @@ export default function GamesPage({ onNavigate }: GamesPageProps) {
   const [games, setGames] = useState<BackendGame[]>([]);
   const [selected, setSelected] = useState<GameDetails | null>(null);
   const [moves, setMoves] = useState<BackendMove[]>([]);
+  const [publicPlayersSnapshot, setPublicPlayersSnapshot] = useState<{
+    gameId: number;
+    players: Record<number, PublicPlayer>;
+  } | null>(null);
+  const [reviewPly, setReviewPly] = useState<number | null>(null);
   const [selectedLoading, setSelectedLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const moveReview = useMemo(() => buildMovePositions(moves), [moves]);
+  const selectedParticipantIds = useMemo(
+    () => [...new Set(selected?.participants
+      .map((participant) => participant.userId)
+      .filter((userId): userId is number => userId !== null) ?? [])],
+    [selected],
+  );
+  const selectedGameId = selected?.game.id;
+  const publicPlayers: Record<number, PublicPlayer> = publicPlayersSnapshot && publicPlayersSnapshot.gameId === selectedGameId
+    ? publicPlayersSnapshot.players
+    : {};
 
   const fetchGames = useCallback(async () => {
     setLoading(true);
@@ -99,9 +125,33 @@ export default function GamesPage({ onNavigate }: GamesPageProps) {
     void Promise.resolve().then(fetchGames);
   }, [fetchGames]);
 
+  useEffect(() => {
+    const gameId = selectedGameId;
+    if (gameId === undefined || selectedParticipantIds.length === 0) return;
+
+    let cancelled = false;
+    void Promise.all(selectedParticipantIds.map(async (userId) => {
+      const { data } = await axiosInstance.get<PublicPlayer>(`/users/public/${userId}`);
+      return data;
+    })).then((players) => {
+      if (!cancelled) {
+        setPublicPlayersSnapshot({
+          gameId,
+          players: Object.fromEntries(players.map((player) => [player.id, player])),
+        });
+      }
+    }).catch((requestError: unknown) => {
+      if (!cancelled) setError(apiMessage(requestError));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedGameId, selectedParticipantIds]);
+
   const openGame = async (game: BackendGame) => {
     setSelectedLoading(true);
     setError("");
+    setReviewPly(null);
     try {
       const [{ data: details }, { data: history }] = await Promise.all([
         axiosInstance.get<GameDetails>(`/games/${game.id}`),
@@ -122,6 +172,9 @@ export default function GamesPage({ onNavigate }: GamesPageProps) {
     const white = selected.participants.find((item) => item.color === "WHITE");
     const black = selected.participants.find((item) => item.color === "BLACK");
     const lastMove = moves.at(-1);
+    const currentPly = reviewPly === null ? moves.length : Math.min(reviewPly, moves.length);
+    const isReviewing = currentPly < moves.length;
+    const reviewedPosition = moveReview.positions[currentPly];
     const listedGameDate = games.find((game) => game.id === selected.game.id)?.createdAt;
 
     return (
@@ -145,21 +198,35 @@ export default function GamesPage({ onNavigate }: GamesPageProps) {
             </div>
             <div className="flex justify-center">
               <ChessBoard
-                fen={selected.game.currentFen}
+                fen={isReviewing && reviewedPosition ? reviewedPosition.fen : selected.game.currentFen}
                 selectedSquare={null}
                 legalTargets={[]}
-                lastMove={lastMove ? { from: lastMove.from as Square, to: lastMove.to as Square } : null}
+                lastMove={isReviewing
+                  ? reviewedPosition?.lastMove ?? null
+                  : lastMove ? { from: lastMove.from as Square, to: lastMove.to as Square } : null}
                 onSquareClick={() => {}}
                 flipped={ownParticipant?.color === "BLACK"}
+                interactive={false}
               />
             </div>
+            <ChessBoardPreferences />
           </div>
 
           <aside className="space-y-4">
             <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-5">
               <h2 className="mb-3 font-semibold text-white">Joueurs</h2>
-              <p className="text-sm text-slate-300">Blancs · {white?.userId ? `Compte ${white.userId}` : "—"}</p>
-              <p className="mt-2 text-sm text-slate-300">Noirs · {black?.userId ? `Compte ${black.userId}` : "—"}</p>
+              <p className="text-sm text-slate-300">
+                Blancs · {white?.userId === null ? "Invité" : publicPlayers[white?.userId ?? -1]?.username ?? (white?.userId ? `Compte ${white.userId}` : "—")}
+                {white?.userId !== null && white?.userId !== undefined && publicPlayers[white.userId] && (
+                  <span className="ml-2 text-amber-200">Elo · {publicPlayers[white.userId].overallRating}</span>
+                )}
+              </p>
+              <p className="mt-2 text-sm text-slate-300">
+                Noirs · {black?.userId === null ? "Invité" : publicPlayers[black?.userId ?? -1]?.username ?? (black?.userId ? `Compte ${black.userId}` : "—")}
+                {black?.userId !== null && black?.userId !== undefined && publicPlayers[black.userId] && (
+                  <span className="ml-2 text-amber-200">Elo · {publicPlayers[black.userId].overallRating}</span>
+                )}
+              </p>
               <p className="mt-4 text-xs text-slate-500">
                 {formatGameDate(selected.game.createdAt, listedGameDate)}
               </p>
@@ -168,11 +235,25 @@ export default function GamesPage({ onNavigate }: GamesPageProps) {
               <h2 className="mb-3 font-semibold text-white">Coups</h2>
               <div className="max-h-72 space-y-1 overflow-y-auto">
                 {moves.length === 0 ? <p className="text-sm text-slate-500">Aucun coup joué.</p> : moves.map((move, index) => (
-                  <div key={move.ply ?? index} className="flex gap-3 rounded px-2 py-1 text-sm hover:bg-slate-800">
+                  <button
+                    type="button"
+                    key={move.ply ?? index}
+                    aria-pressed={currentPly === index + 1}
+                    onClick={() => setReviewPly(index + 1 === moves.length ? null : index + 1)}
+                    className={`flex w-full gap-3 rounded px-2 py-1 text-left text-sm hover:bg-slate-800${currentPly === index + 1 ? " bg-slate-800" : ""}`}
+                  >
                     <span className="w-7 text-slate-500">{Math.floor(index / 2) + 1}.</span>
                     <span className="text-slate-200">{move.san ?? `${move.from}–${move.to}`}</span>
-                  </div>
+                  </button>
                 ))}
+              </div>
+              <div className="vc-game-history-review">
+                <MoveReviewControls
+                  currentPly={currentPly}
+                  moveCount={moves.length}
+                  onSelectPly={(ply) => setReviewPly(ply === moves.length ? null : ply)}
+                />
+                {moveReview.error && <p role="alert" className="mt-3 text-sm text-rose-300">Impossible de relire les coups : {moveReview.error}</p>}
               </div>
             </div>
           </aside>

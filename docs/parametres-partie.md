@@ -120,9 +120,33 @@ le niveau de l’ordinateur (**Facile**, **Intermédiaire** ou **Difficile**).
 Ces parties sont locales et amicales : elles ne sont pas envoyées au serveur et
 ne changent pas le classement du joueur.
 
+Trois adversaires d’entraînement affichent un Elo indicatif (800, 1200 ou 1600).
+Ces valeurs servent à choisir un niveau de jeu et ne constituent pas une
+mesure calibrée de la force de l’ordinateur ; les parties restent locales et
+n’affectent jamais l’Elo officiel. L’horloge du joueur comme celle de
+l’ordinateur se décrémente pendant le tour actif, y compris pendant le temps
+de réflexion de l’ordinateur.
+
+Les joueurs connectés voient leur Elo global près de leur nom. L’Elo est
+également visible pour l’adversaire identifié dans les parties en ligne et
+l’historique ; il n’est pas affiché pour les participants invités ni pour les
+niveaux d’ordinateur sans Elo.
+
 ## Styles clair et sombre
 
 Le formulaire conserve la palette verte de l’application. Ses styles dédiés
 sont dans [`App.css`](../src/App.css) sous les classes
 `.vc-computer-settings`, `.vc-game-setup-*` et `.vc-color-selector`.
 Les surcharges `.dark` adaptent les mêmes contrôles au thème sombre.
+
+## Apparence et relecture d’une partie
+
+Le menu **Apparence de l’échiquier** permet de choisir les couleurs du plateau
+et le style des pièces. Ce choix est enregistré dans les préférences du joueur
+et s’applique aux parties en ligne, contre l’ordinateur et aux parties
+consultées dans l’historique. Il reste modifiable pendant une partie.
+
+Les commandes sous le plateau permettent de revenir au début, de parcourir les
+coups un par un ou de revenir à la position actuelle. Les coups de l’historique
+sont également sélectionnables pour afficher directement la position
+correspondante ; une relecture ne modifie pas la partie en cours.

@@ -6,6 +6,7 @@ import {
   Circle,
   Clock3,
   Copy,
+  Crown,
   Flag,
   Gamepad2,
   Handshake,
@@ -29,6 +30,7 @@ import { useSocket } from "../context/SocketContextValue";
 import axiosInstance, { type SkipAuthRequestConfig } from "../axios";
 import ChessBoard from "../components/ChessBoard";
 import ChessBoardPreferences from "../components/ChessBoardPreferences";
+import MoveReviewControls from "../components/MoveReviewControls";
 import ColorPreferenceSelector, {
   type ColorPreference,
 } from "../components/ColorPreferenceSelector";
@@ -40,6 +42,7 @@ import {
   saveGuestGameSession,
   type GuestGameSession,
 } from "../guestSession";
+import { buildMovePositions } from "../chess/moveHistory";
 
 type PlayPageProps = {
   onNavigate: (tab: string) => void;
@@ -72,6 +75,21 @@ type BackendMove = {
   san: string | null;
   ply?: number;
 };
+
+type GameParticipant = {
+  id: number;
+  userId: number | null;
+  color: "WHITE" | "BLACK";
+};
+
+type PublicPlayer = {
+  id: number;
+  username: string;
+  avatarUrl: string | null;
+  overallRating: number;
+};
+
+type PlayerRatings = { overallRating: number };
 
 type GameChatMessage = {
   id: number | string;
@@ -172,7 +190,15 @@ function displayStatus(status: string) {
   } as Record<string, string>)[status] ?? status;
 }
 
-function MoveList({ moves }: { moves: BackendMove[] }) {
+function MoveList({
+  moves,
+  currentPly,
+  onSelectPly,
+}: {
+  moves: BackendMove[];
+  currentPly: number;
+  onSelectPly: (ply: number) => void;
+}) {
   if (moves.length === 0) {
     return <p className="vc-game-empty">Aucun coup joué.</p>;
   }
@@ -182,12 +208,24 @@ function MoveList({ moves }: { moves: BackendMove[] }) {
       {Array.from({ length: Math.ceil(moves.length / 2) }, (_, index) => (
         <div className="vc-game-move-row" key={index}>
           <span>{index + 1}.</span>
-          <strong>{moves[index * 2].san ?? `${moves[index * 2].from}–${moves[index * 2].to}`}</strong>
-          <strong>
-            {moves[index * 2 + 1]
-              ? moves[index * 2 + 1].san ?? `${moves[index * 2 + 1].from}–${moves[index * 2 + 1].to}`
-              : "—"}
-          </strong>
+          <button
+            type="button"
+            className={`vc-game-move-select${currentPly === index * 2 + 1 ? " is-current" : ""}`}
+            aria-pressed={currentPly === index * 2 + 1}
+            onClick={() => onSelectPly(index * 2 + 1)}
+          >
+            {moves[index * 2].san ?? `${moves[index * 2].from}–${moves[index * 2].to}`}
+          </button>
+          {moves[index * 2 + 1] ? (
+            <button
+              type="button"
+              className={`vc-game-move-select${currentPly === index * 2 + 2 ? " is-current" : ""}`}
+              aria-pressed={currentPly === index * 2 + 2}
+              onClick={() => onSelectPly(index * 2 + 2)}
+            >
+              {moves[index * 2 + 1].san ?? `${moves[index * 2 + 1].from}–${moves[index * 2 + 1].to}`}
+            </button>
+          ) : <span>—</span>}
         </div>
       ))}
     </div>
@@ -231,6 +269,12 @@ export default function PlayPage({
     () => localStorage.getItem(MOVE_SOUND_STORAGE_KEY) !== "false",
   );
   const [moves, setMoves] = useState<BackendMove[]>([]);
+  const [participantSnapshot, setParticipantSnapshot] = useState<{ gameId: number; participants: GameParticipant[] } | null>(null);
+  const [opponentProfileSnapshot, setOpponentProfileSnapshot] = useState<{ userId: number; profile: PublicPlayer } | null>(null);
+  const [ownRating, setOwnRating] = useState<{ userId: string; rating: number } | null>(null);
+  const [ratingsError, setRatingsError] = useState("");
+  const [reviewPly, setReviewPly] = useState<{ gameId: number; ply: number } | null>(null);
+  const moveReview = useMemo(() => buildMovePositions(moves), [moves]);
   const [chatMessages, setChatMessages] = useState<GameChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatSending, setChatSending] = useState(false);
@@ -258,6 +302,20 @@ export default function PlayPage({
   const processedInvitation = useRef<string | null>(null);
   const processedAnonymousInvitation = useRef<string | null>(null);
   const autoStartHandled = useRef(false);
+  const currentGameReviewPly = reviewPly && reviewPly.gameId === activeGame?.id
+    ? reviewPly.ply
+    : null;
+  const currentPly = currentGameReviewPly === null ? moves.length : Math.min(currentGameReviewPly, moves.length);
+  const isReviewing = currentPly < moves.length;
+  const reviewedPosition = moveReview.positions[currentPly];
+
+  const selectReviewPly = (ply: number) => {
+    if (!activeGame || ply === moves.length) {
+      setReviewPly(null);
+      return;
+    }
+    setReviewPly({ gameId: activeGame.id, ply });
+  };
 
   const applyGameSnapshot = useCallback((game: BackendGame, synchronizedAt?: number) => {
     activeGameRef.current = game;
@@ -314,6 +372,74 @@ export default function PlayPage({
   const activeGuestGameId = activeGame && guestSession?.gameId === activeGame.id
     ? activeGame.id
     : null;
+  const activeGameId = activeGame?.id;
+  const currentParticipants = participantSnapshot && participantSnapshot.gameId === activeGameId
+    ? participantSnapshot.participants
+    : [];
+  const opponentParticipant = currentParticipants.find((participant) =>
+    myParticipantId !== null
+      ? participant.id !== myParticipantId
+      : participant.userId !== Number(profile?.id),
+  );
+  const opponentProfile = opponentParticipant?.userId !== null &&
+    opponentParticipant?.userId !== undefined &&
+    opponentProfileSnapshot?.userId === opponentParticipant.userId
+    ? opponentProfileSnapshot.profile
+    : null;
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    let cancelled = false;
+    void axiosInstance.get<PlayerRatings>("/users/me/ratings")
+      .then(({ data }) => {
+        if (!cancelled) {
+          setOwnRating({ userId: profile.id, rating: data.overallRating });
+          setRatingsError("");
+        }
+      })
+      .catch((requestError: unknown) => {
+        if (!cancelled) setRatingsError(errorMessage(requestError, "Impossible de charger votre Elo."));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
+
+  useEffect(() => {
+    if (activeGameId === undefined || !profile?.id || activeGuestGameId !== null) return;
+    let cancelled = false;
+    void axiosInstance.get<{ participants?: GameParticipant[] }>(`/games/${activeGameId}`)
+      .then(({ data }) => {
+        if (!cancelled && data.participants) {
+          setParticipantSnapshot({ gameId: activeGameId, participants: data.participants });
+        }
+      })
+      .catch((requestError: unknown) => {
+        if (!cancelled) setError(errorMessage(requestError, "Impossible de charger les joueurs de la partie."));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeGameId, activeGuestGameId, profile?.id]);
+
+  useEffect(() => {
+    const opponentId = opponentParticipant?.userId;
+    if (opponentId === null || opponentId === undefined) return;
+    let cancelled = false;
+    void axiosInstance.get<PublicPlayer>(`/users/public/${opponentId}`)
+      .then(({ data }) => {
+        if (!cancelled) {
+          setOpponentProfileSnapshot({ userId: opponentId, profile: data });
+          setRatingsError("");
+        }
+      })
+      .catch((requestError: unknown) => {
+        if (!cancelled) setRatingsError(errorMessage(requestError, "Impossible de charger l’Elo de l’adversaire."));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [opponentParticipant?.userId]);
 
   useEffect(() => {
     if (activeGuestGameId === null) return;
@@ -556,10 +682,13 @@ export default function PlayPage({
       if (!payload || typeof payload !== "object") return;
       const state = payload as {
         game?: unknown;
-        participants?: Array<{ id: number; userId: number | null; color: "WHITE" | "BLACK" }>;
+        participants?: GameParticipant[];
         moves?: BackendMove[];
       };
       const game = readGame(state);
+      if (state.participants && game) {
+        setParticipantSnapshot({ gameId: game.id, participants: state.participants });
+      }
       if (game?.status === "IN_PROGRESS") setGamePlayersReady(true);
       const waitingForOpponent = game?.id === waitingInviteGame?.id;
       if (game && (!waitingForOpponent || (state.participants?.length ?? 0) > 1)) {
@@ -1221,14 +1350,16 @@ export default function PlayPage({
 
         {error && <p role="alert" className="vc-game-alert is-error">{error}</p>}
         {notice && <p role="status" className="vc-game-alert is-notice">{notice}</p>}
+        {ratingsError && <p role="alert" className="vc-game-alert is-error">{ratingsError}</p>}
 
         <div className="vc-game-layout">
           <section className="vc-game-board-panel" aria-label="Échiquier">
             <div className={`vc-game-player${activeGame.activeColor === (myColor === "WHITE" ? "BLACK" : "WHITE") ? " is-active" : ""}`}>
               <span className="vc-game-avatar"><UserRound size={24} /></span>
               <span className="vc-game-player__identity">
-                <strong>Adversaire</strong>
+                <strong>{opponentProfile?.username ?? (opponentParticipant?.userId === null ? "Invité" : "Adversaire")}</strong>
                 <small><i /> {myColor ? (myColor === "WHITE" ? "Noirs" : "Blancs") : "Adversaire"}</small>
+                {opponentProfile && <small className="vc-game-player__rating">Elo · {opponentProfile.overallRating}</small>}
               </span>
               <span className="vc-game-clock">
                 <Clock3 size={20} />
@@ -1238,18 +1369,20 @@ export default function PlayPage({
 
             <div className="vc-game-board-frame">
               <ChessBoard
-                fen={activeGame.currentFen}
+                fen={isReviewing && reviewedPosition ? reviewedPosition.fen : activeGame.currentFen}
                 selectedSquare={selectedSquare}
                 legalTargets={legalTargets}
-                lastMove={moves.length ? {
-                  from: moves[moves.length - 1].from as Square,
-                  to: moves[moves.length - 1].to as Square,
-                } : null}
+                lastMove={isReviewing
+                  ? reviewedPosition?.lastMove ?? null
+                  : moves.length ? {
+                    from: moves[moves.length - 1].from as Square,
+                    to: moves[moves.length - 1].to as Square,
+                  } : null}
                 onSquareClick={handleSquareClick}
                 flipped={(myColor === "BLACK") !== boardFlipped}
+                interactive={!isReviewing}
               />
             </div>
-
             <div className={`vc-game-player vc-game-player--self${activeGame.activeColor === myColor ? " is-active" : ""}`}>
               <span className="vc-game-avatar vc-game-avatar--self">
                 {profile?.avatarUrl
@@ -1259,6 +1392,7 @@ export default function PlayPage({
               <span className="vc-game-player__identity">
                 <strong>{profile?.username ?? "Vous"} <Crown size={13} aria-label="Joueur" /></strong>
                 <small><i /> {myColor === "WHITE" ? "Blancs" : myColor === "BLACK" ? "Noirs" : "Connexion en cours"}</small>
+                {profile && ownRating?.userId === profile.id && <small className="vc-game-player__rating">Elo · {ownRating.rating}</small>}
               </span>
               <span className="vc-game-clock">
                 <Clock3 size={20} />
@@ -1306,7 +1440,17 @@ export default function PlayPage({
                 </p>
                 <div className="vc-game-panel-section">
                   <h2>Coups joués</h2>
-                  <MoveList moves={moves} />
+                  <MoveList moves={moves} currentPly={currentPly} onSelectPly={selectReviewPly} />
+                  <MoveReviewControls
+                    currentPly={currentPly}
+                    moveCount={moves.length}
+                    onSelectPly={(ply) => {
+                      setSelectedSquare(null);
+                      setLegalTargets([]);
+                      selectReviewPly(ply);
+                    }}
+                  />
+                  {moveReview.error && <p role="alert" className="vc-game-status is-review-error">Impossible de relire les coups : {moveReview.error}</p>}
                 </div>
                 <div className="vc-game-panel-section">
                   <h2>Options</h2>
@@ -1341,7 +1485,17 @@ export default function PlayPage({
               <div className="vc-game-panel-content">
                 <div className="vc-game-panel-section">
                   <h2><Clock3 size={16} /> Historique des coups</h2>
-                  <MoveList moves={moves} />
+                  <MoveList moves={moves} currentPly={currentPly} onSelectPly={selectReviewPly} />
+                  <MoveReviewControls
+                    currentPly={currentPly}
+                    moveCount={moves.length}
+                    onSelectPly={(ply) => {
+                      setSelectedSquare(null);
+                      setLegalTargets([]);
+                      selectReviewPly(ply);
+                    }}
+                  />
+                  {moveReview.error && <p role="alert" className="vc-game-status is-review-error">Impossible de relire les coups : {moveReview.error}</p>}
                 </div>
               </div>
             )}

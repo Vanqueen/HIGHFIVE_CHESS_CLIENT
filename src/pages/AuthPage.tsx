@@ -3,6 +3,7 @@ import { ChessKnight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { KANEO_PIECES } from '../assets/pieces/kaneo';
 import './AuthPage.css';
+import { useNavigate } from 'react-router-dom';
 
 type AuthPageProps = {
   onAuthSuccess: () => void;
@@ -35,6 +36,8 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { register, login } = useAuth();
+  // const isPasswordWeak = password.length > 0 && password.length < 8;
+  const navigate = useNavigate();
 
   const passwordScore = (() => {
     if (!password) return 0;
@@ -259,6 +262,12 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
           <div className="auth-visual__topline">
             <span className="auth-visual__status">ÉCHECS EN LIGNE</span>
             <nav className="auth-visual__nav" aria-label="Navigation de connexion">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+              >
+                Accueil
+              </button>
               <button
                 type="button"
                 className={mode === 'signin' ? 'is-active' : undefined}

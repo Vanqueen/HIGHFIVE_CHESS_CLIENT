@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Chess, type Square } from "chess.js";
+import type { AxiosError } from "axios";
 import {
   ArrowLeft,
   Bot,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import ChessBoard from "../components/ChessBoard";
 import ChessBoardPreferences from "../components/ChessBoardPreferences";
+import MoveReviewControls from "../components/MoveReviewControls";
 import ColorPreferenceSelector, {
   type ColorPreference,
 } from "../components/ColorPreferenceSelector";
@@ -19,10 +21,21 @@ import GameSetupControls, {
   type TimeControlPreset,
 } from "../components/GameSetupControls";
 import { chooseComputerMove } from "../chess/computerPlayer";
+import { buildMovePositions } from "../chess/moveHistory";
+import axiosInstance from "../axios";
+import { useAuth } from "../context/AuthContext";
 
 type Difficulty = "easy" | "medium" | "hard";
+type ComputerOpponent = Difficulty | "elo-800" | "elo-1200" | "elo-1600";
 type PlayerColor = "WHITE" | "BLACK";
 type ComputerGamePageProps = { onExit?: () => void };
+type PlayerRatings = { overallRating: number };
+
+const RATED_OPPONENTS: Array<{ id: ComputerOpponent; rating: number; difficulty: Difficulty }> = [
+  { id: "elo-800", rating: 800, difficulty: "easy" },
+  { id: "elo-1200", rating: 1200, difficulty: "medium" },
+  { id: "elo-1600", rating: 1600, difficulty: "hard" },
+];
 
 const COMPUTER_TIME_PRESETS: TimeControlPreset[] = [
   { initialTimeSeconds: 60, incrementSeconds: 0, label: "1 min" },
@@ -32,8 +45,20 @@ const COMPUTER_TIME_PRESETS: TimeControlPreset[] = [
   { initialTimeSeconds: 900, incrementSeconds: 0, label: "15 min" },
 ];
 
-function difficultyLabel(difficulty: Difficulty) {
-  return ({ easy: "Facile", medium: "Intermédiaire", hard: "Difficile" })[difficulty];
+function difficultyLabel(opponent: ComputerOpponent) {
+  const ratedOpponent = RATED_OPPONENTS.find((item) => item.id === opponent);
+  if (ratedOpponent) return `IA · ${ratedOpponent.rating} Elo`;
+  return ({ easy: "Facile", medium: "Intermédiaire", hard: "Difficile" })[opponent as Difficulty];
+}
+
+function engineDifficulty(opponent: ComputerOpponent): Difficulty {
+  return RATED_OPPONENTS.find((item) => item.id === opponent)?.difficulty ??
+    (opponent as Difficulty);
+}
+
+function apiMessage(error: unknown) {
+  const response = (error as AxiosError<{ message?: string }>).response?.data;
+  return response?.message ?? (error instanceof Error ? error.message : "Impossible de charger l’Elo.");
 }
 
 function gameResult(chess: Chess, playerColor: PlayerColor) {
@@ -50,8 +75,9 @@ function gameResult(chess: Chess, playerColor: PlayerColor) {
 }
 
 export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
+  const { profile } = useAuth();
   const [fen, setFen] = useState(() => new Chess().fen());
-  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [opponent, setOpponent] = useState<ComputerOpponent>("medium");
   const [colorPreference, setColorPreference] = useState<ColorPreference>("RANDOM");
   const [playerColor, setPlayerColor] = useState<PlayerColor>("WHITE");
   const [initialTimeSeconds, setInitialTimeSeconds] = useState(300);
@@ -60,13 +86,45 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [legalTargets, setLegalTargets] = useState<Square[]>([]);
   const [moves, setMoves] = useState<string[]>([]);
+  const [reviewPly, setReviewPly] = useState<number | null>(null);
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState({ WHITE: 300, BLACK: 300 });
+  const [ownRating, setOwnRating] = useState<{ userId: string; rating: number } | null>(null);
+  const [ratingsError, setRatingsError] = useState("");
   const aiTimerRef = useRef<number | null>(null);
+  const secondsLeftRef = useRef(secondsLeft);
+  const clockExpiredRef = useRef(false);
   const chess = useMemo(() => new Chess(fen), [fen]);
+  const difficulty = engineDifficulty(opponent);
+  const opponentRating = RATED_OPPONENTS.find((item) => item.id === opponent)?.rating ?? null;
   const aiColor = playerColor === "WHITE" ? "b" : "w";
   const activeColor = chess.turn() === "w" ? "WHITE" : "BLACK";
+  const moveReview = useMemo(
+    () => buildMovePositions(moves.map((san) => ({ san }))),
+    [moves],
+  );
+  const currentPly = reviewPly === null ? moves.length : Math.min(reviewPly, moves.length);
+  const isReviewing = currentPly < moves.length;
+  const reviewedPosition = moveReview.positions[currentPly];
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    let cancelled = false;
+    void axiosInstance.get<PlayerRatings>("/users/me/ratings")
+      .then(({ data }) => {
+        if (!cancelled) {
+          setOwnRating({ userId: profile.id, rating: data.overallRating });
+          setRatingsError("");
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setRatingsError(apiMessage(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
 
   const commitMove = (move: ReturnType<Chess["move"]>) => {
     setMoves((current) => [...current, move.san]);
@@ -86,6 +144,7 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
   useEffect(() => {
     if (!started || result || activeColor !== (aiColor === "w" ? "WHITE" : "BLACK")) return;
     aiTimerRef.current = window.setTimeout(() => {
+      if (clockExpiredRef.current) return;
       const current = new Chess(fen);
       const move = chooseComputerMove(fen, difficulty);
       if (!move) {
@@ -101,7 +160,7 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
       setSelectedSquare(null);
       setLegalTargets([]);
       setThinking(false);
-    }, 250);
+    }, 1_100);
     return () => {
       if (aiTimerRef.current !== null) window.clearTimeout(aiTimerRef.current);
     };
@@ -109,19 +168,26 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
 
   useEffect(() => {
     if (!started || result || initialTimeSeconds === 0) return;
+    const turnStartedAt = Date.now();
+    const turnTimeMs = secondsLeftRef.current[activeColor] * 1000;
+    const deadline = turnStartedAt + turnTimeMs;
     const timer = window.setInterval(() => {
-      const remaining = Math.max(0, secondsLeft[activeColor] - 1);
-      setSecondsLeft((current) => {
-        return { ...current, [activeColor]: remaining };
-      });
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      if (secondsLeftRef.current[activeColor] !== remaining) {
+        const nextSeconds = { ...secondsLeftRef.current, [activeColor]: remaining };
+        secondsLeftRef.current = nextSeconds;
+        setSecondsLeft(nextSeconds);
+      }
       if (remaining === 0) {
+        clockExpiredRef.current = true;
         setResult(activeColor === playerColor
           ? "Temps écoulé. L’ordinateur gagne."
           : "Temps écoulé. Vous gagnez !");
+        window.clearInterval(timer);
       }
-    }, 1_000);
+    }, 100);
     return () => window.clearInterval(timer);
-  }, [activeColor, initialTimeSeconds, playerColor, result, secondsLeft, started]);
+  }, [activeColor, initialTimeSeconds, playerColor, result, started]);
 
   const handleSquareClick = (square: Square) => {
     if (!started || thinking || result || activeColor !== playerColor) return;
@@ -157,11 +223,14 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
     setPlayerColor(nextPlayerColor);
     setFen(nextChess.fen());
     setMoves([]);
+    setReviewPly(null);
     setLastMove(null);
     setResult(null);
     setSelectedSquare(null);
     setLegalTargets([]);
     setSecondsLeft({ WHITE: initialTimeSeconds, BLACK: initialTimeSeconds });
+    secondsLeftRef.current = { WHITE: initialTimeSeconds, BLACK: initialTimeSeconds };
+    clockExpiredRef.current = false;
     setThinking(nextPlayerColor === "BLACK");
     setStarted(true);
   };
@@ -202,29 +271,46 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
               ratedUnavailableReason="Une partie contre l’ordinateur ne modifie pas votre Elo."
               presets={COMPUTER_TIME_PRESETS}
             />
-            <ColorPreferenceSelector
-              value={colorPreference}
-              onChange={setColorPreference}
-            />
-            <ChessBoardPreferences />
-            <label className="vc-computer-settings__field">
-              Niveau de l’ordinateur
-              <select
-                value={difficulty}
-                onChange={(event) => setDifficulty(event.target.value as Difficulty)}
+            <div>
+              <ColorPreferenceSelector
+                value={colorPreference}
+                onChange={setColorPreference}
+              />
+              <label className="vc-computer-settings__field">
+                Niveau de l’ordinateur
+                <select
+                  value={opponent}
+                  onChange={(event) => setOpponent(event.target.value as ComputerOpponent)}
+                >
+                  <optgroup label="Sans Elo">
+                    <option value="easy">Facile</option>
+                    <option value="medium">Intermédiaire</option>
+                    <option value="hard">Difficile</option>
+                  </optgroup>
+                  <optgroup label="IA d’entraînement · Elo indicatif">
+                    {RATED_OPPONENTS.map((ratedOpponent) => (
+                      <option key={ratedOpponent.id} value={ratedOpponent.id}>
+                        {ratedOpponent.rating} Elo
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </label>
+              {opponentRating !== null && (
+                <p className="vc-computer-rating-note">
+                  Elo d’entraînement indicatif ; ces parties ne changent pas votre classement officiel.
+                </p>
+              )}
+              {ratingsError && <p role="alert" className="vc-computer-rating-error">{ratingsError}</p>}
+              <button
+                type="button"
+                onClick={startGame}
+                className="vc-computer-settings__start mt-4 min-h-11.75 inline-flex items-center justify-center gap-2 border-0 rounded-lg bg-[#31845a] dark:bg-[#268052] px-2 text-sm font-[13px] text-slate-200 dark:text-[#f2faf4] hover:bg-[#286f4b] dark:hover:bg-[#319764] cursor-pointer"
               >
-                <option value="easy">Facile</option>
-                <option value="medium">Intermédiaire</option>
-                <option value="hard">Difficile</option>
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={startGame}
-              className="vc-computer-settings__start"
-            >
-              <Play size={16} fill="currentColor" /> Commencer la partie
-            </button>
+                <Play size={16} fill="currentColor" /> Commencer la partie
+              </button>
+            </div>
+            <ChessBoardPreferences />
           </div>
         </section>
       </main>
@@ -238,7 +324,7 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
           <Bot size={23} aria-hidden="true" />
           <div>
             <h1>Partie contre l’ordinateur</h1>
-            <p>{difficultyLabel(difficulty)} · {initialTimeSeconds === 0 ? "Sans limite" : `${Math.floor(initialTimeSeconds / 60)} min`}</p>
+            <p>{difficultyLabel(opponent)} · {initialTimeSeconds === 0 ? "Sans limite" : `${Math.floor(initialTimeSeconds / 60)} min`}</p>
           </div>
         </div>
         <button type="button" onClick={startGame} className="vc-game-back">
@@ -254,18 +340,20 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
             <span className="vc-game-avatar"><Bot size={22} /></span>
             <span className="vc-game-player__identity">
               <strong>Ordinateur</strong>
-              <small><i /> {difficultyLabel(difficulty)} · {playerColor === "WHITE" ? "Noirs" : "Blancs"}</small>
+              <small><i /> {difficultyLabel(opponent)} · {playerColor === "WHITE" ? "Noirs" : "Blancs"}</small>
+              {opponentRating !== null && <small className="vc-game-player__rating">Elo d’entraînement · {opponentRating}</small>}
             </span>
             <span className="vc-game-clock"><Clock3 size={19} /><strong>{initialTimeSeconds === 0 ? "∞" : formatTime(secondsLeft[playerColor === "WHITE" ? "BLACK" : "WHITE"])}</strong></span>
           </div>
           <div className="vc-game-board-frame">
             <ChessBoard
-              fen={fen}
+              fen={isReviewing && reviewedPosition ? reviewedPosition.fen : fen}
               selectedSquare={selectedSquare}
               legalTargets={legalTargets}
-              lastMove={lastMove}
+              lastMove={isReviewing ? reviewedPosition?.lastMove ?? null : lastMove}
               onSquareClick={handleSquareClick}
               flipped={playerColor === "BLACK"}
+              interactive={!isReviewing}
             />
           </div>
           <div className={`vc-game-player vc-game-player--self${activeColor === playerColor ? " is-active" : ""}`}>
@@ -273,15 +361,17 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
             <span className="vc-game-player__identity">
               <strong>Vous</strong>
               <small><i /> {playerColor === "WHITE" ? "Blancs" : "Noirs"}</small>
+              {profile && ownRating?.userId === profile.id && <small className="vc-game-player__rating">Elo · {ownRating.rating}</small>}
             </span>
             <span className="vc-game-clock"><Clock3 size={19} /><strong>{initialTimeSeconds === 0 ? "∞" : formatTime(secondsLeft[playerColor])}</strong></span>
           </div>
+          {ratingsError && <p role="alert" className="vc-game-alert is-error">{ratingsError}</p>}
           <ChessBoardPreferences />
           {thinking && <p className="vc-game-status"><LoaderCircle size={15} className="animate-spin" /> L’ordinateur réfléchit…</p>}
         </section>
 
-        <aside className="vc-game-sidepanel">
-          <nav className="vc-game-tabs" aria-label="Historique de la partie">
+        <aside className="vc-game-sidepanel px-4">
+          <nav className="m" aria-label="Historique de la partie">
             <span className="is-active">Coups joués ({moves.length})</span>
           </nav>
           <div className="vc-game-panel-content">
@@ -292,12 +382,40 @@ export default function ComputerGamePage({ onExit }: ComputerGamePageProps) {
                 {Array.from({ length: Math.ceil(moves.length / 2) }, (_, index) => (
                   <div className="vc-game-move-row" key={index}>
                     <span>{index + 1}.</span>
-                    <strong>{moves[index * 2] ?? "—"}</strong>
-                    <strong>{moves[index * 2 + 1] ?? "—"}</strong>
+                    {moves[index * 2] ? (
+                      <button
+                        type="button"
+                        className={`vc-game-move-select${currentPly === index * 2 + 1 ? " is-current" : ""}`}
+                        aria-pressed={currentPly === index * 2 + 1}
+                        onClick={() => setReviewPly(index * 2 + 1 === moves.length ? null : index * 2 + 1)}
+                      >
+                        {moves[index * 2]}
+                      </button>
+                    ) : <span>—</span>}
+                    {moves[index * 2 + 1] ? (
+                      <button
+                        type="button"
+                        className={`vc-game-move-select${currentPly === index * 2 + 2 ? " is-current" : ""}`}
+                        aria-pressed={currentPly === index * 2 + 2}
+                        onClick={() => setReviewPly(index * 2 + 2 === moves.length ? null : index * 2 + 2)}
+                      >
+                        {moves[index * 2 + 1]}
+                      </button>
+                    ) : <span>—</span>}
                   </div>
                 ))}
               </div>
             )}
+            <MoveReviewControls
+              currentPly={currentPly}
+              moveCount={moves.length}
+              onSelectPly={(ply) => {
+                setSelectedSquare(null);
+                setLegalTargets([]);
+                setReviewPly(ply === moves.length ? null : ply);
+              }}
+            />
+            {moveReview.error && <p role="alert" className="vc-game-status is-review-error">Impossible de relire les coups : {moveReview.error}</p>}
             <button
               type="button"
               onClick={onExit}

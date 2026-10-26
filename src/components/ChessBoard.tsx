@@ -16,6 +16,7 @@ type ChessBoardProps = {
   lastMove: { from: Square; to: Square } | null;
   onSquareClick: (square: Square) => void;
   flipped?: boolean;
+  interactive?: boolean;
   /** Overrides the user's saved preference — for decorative/preview boards only. */
   boardTheme?: BoardTheme;
   /** Overrides the user's saved preference — for decorative/preview boards only. */
@@ -127,6 +128,7 @@ export default function ChessBoard({
   lastMove,
   onSquareClick,
   flipped = false,
+  interactive = true,
   boardTheme: boardThemeOverride,
   pieceStyle: pieceStyleOverride,
 }: ChessBoardProps) {
@@ -161,8 +163,8 @@ export default function ChessBoard({
               return (
                 <div
                   key={sq}
-                  onClick={() => onSquareClick(sq)}
-                  className={`vc-chessboard__square ${isLight ? 'is-light' : 'is-dark'} relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center cursor-pointer transition-colors
+                  onClick={() => interactive && onSquareClick(sq)}
+                  className={`vc-chessboard__square ${isLight ? 'is-light' : 'is-dark'} relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center ${interactive ? 'cursor-pointer' : 'cursor-default'} transition-colors
                     ${isSelected ? 'is-selected ring-2 ring-inset ring-blue-500' : ''}
                     ${isLastMove && !isSelected ? 'is-last-move bg-yellow-300/40' : ''}`}
                 >
