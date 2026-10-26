@@ -15,4 +15,4 @@ Source : [Kadagaden/chess-pieces](https://github.com/Kadagaden/chess-pieces) (do
 
 Le thème de plateau `"sand"` (`src/chess/chessAppearance.ts`) reprend les deux couleurs de `boards/8x8_brown_sand.svg` du même dépôt (`#ebecd0` / `#b68860`). Aucun fichier de ce dossier `boards/` n'a été copié dans le projet — seules les deux valeurs hexadécimales ont été reprises.
 
-La licence CC BY impose de créditer l'auteur dans l'interface (par exemple sur une page crédits/mentions légales), pour les pièces comme pour ce thème de plateau. Ce point reste à faire — voir `docs/DECISIONS.md`.
+Les pièces et les deux couleurs du thème « Sable » sont attribuées à Kadagaden selon la licence CC BY 4.0. Cet avis conserve les crédits avec les ressources concernées ; il peut également servir de source pour une future page de crédits ou de mentions légales dans l'application.

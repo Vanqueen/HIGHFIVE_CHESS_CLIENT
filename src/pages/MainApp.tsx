@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { useNavigation } from "../context/NavigationContext";
 import HeaderPage from "./Header";
 import SidebarLeft from "./SidebarLeft";
@@ -39,7 +40,18 @@ export default function MainApp() {
   };
   return (
     <div className={`vc-app${sidebarCollapsed ? " vc-app--sidebar-collapsed" : ""}`}>
-      <HeaderPage onToggleSidebar={() => setSidebarCollapsed((collapsed) => !collapsed)} />
+      <HeaderPage />
+      {!sidebarCollapsed && (
+        <button
+          type="button"
+          className="vc-sidebar-open-btn"
+          aria-label="Afficher la barre latérale"
+          aria-controls="vc-sidebar-left"
+          onClick={() => setSidebarCollapsed(true)}
+        >
+          <ChevronRight size={18} aria-hidden="true" />
+        </button>
+      )}
       {sidebarCollapsed && (
         <button
           type="button"
@@ -49,7 +61,11 @@ export default function MainApp() {
         />
       )}
       <div className="vc-layout">
-        <SidebarLeft onNavigate={closeSidebarOnMobile} />
+        <SidebarLeft
+          onNavigate={closeSidebarOnMobile}
+          onToggleSidebar={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          sidebarCollapsed={sidebarCollapsed}
+        />
 
         <main className="vc-main">
           {tab === "home" && (

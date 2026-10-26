@@ -2,6 +2,8 @@ import {
   BarChart2,
   BookOpen,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Gamepad2,
   Home,
@@ -49,7 +51,13 @@ const getGroupForTab = (tab: Tab): NavGroupId => {
   return "management";
 };
 
-export default function SidebarLeft({ onNavigate }: { onNavigate: () => void }) {
+type SidebarLeftProps = {
+  onNavigate: () => void;
+  onToggleSidebar: () => void;
+  sidebarCollapsed: boolean;
+};
+
+export default function SidebarLeft({ onNavigate, onToggleSidebar, sidebarCollapsed }: SidebarLeftProps) {
   const { tab, setTab } = useNavigation();
   const { profile } = useAuth();
   const [openGroup, setOpenGroup] = useState<NavGroupId | null>(() => getGroupForTab(tab));
@@ -111,7 +119,16 @@ export default function SidebarLeft({ onNavigate }: { onNavigate: () => void }) 
   };
 
   return (
-    <aside className="vc-sidebar-left">
+    <aside className="vc-sidebar-left" id="vc-sidebar-left">
+      <button
+        type="button"
+        className="vc-sidebar-collapse-btn"
+        aria-label="Basculer l’affichage de la barre latérale"
+        aria-controls="vc-sidebar-left"
+        onClick={onToggleSidebar}
+      >
+        {sidebarCollapsed ? <ChevronRight size={18} aria-hidden="true" /> : <ChevronLeft size={18} aria-hidden="true" />}
+      </button>
       <nav className="vc-sidebar-nav" aria-label="Navigation principale">
         {groups.map((group) => {
           const expanded = openGroup === group.id;

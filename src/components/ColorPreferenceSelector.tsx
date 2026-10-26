@@ -1,3 +1,5 @@
+import { Circle, Shuffle } from "lucide-react";
+
 export type ColorPreference = "WHITE" | "BLACK" | "RANDOM";
 
 type ColorPreferenceSelectorProps = {
@@ -8,11 +10,11 @@ type ColorPreferenceSelectorProps = {
 const OPTIONS: Array<{
   value: ColorPreference;
   label: string;
-  piece: string;
+  icon: typeof Circle;
 }> = [
-  { value: "WHITE", label: "Blancs", piece: "♔" },
-  { value: "RANDOM", label: "Couleur aléatoire", piece: "♔♚" },
-  { value: "BLACK", label: "Noirs", piece: "♚" },
+  { value: "WHITE", label: "Blancs", icon: Circle },
+  { value: "RANDOM", label: "Couleur aléatoire", icon: Shuffle },
+  { value: "BLACK", label: "Noirs", icon: Circle },
 ];
 
 export default function ColorPreferenceSelector({
@@ -31,7 +33,12 @@ export default function ColorPreferenceSelector({
             onClick={() => onChange(option.value)}
             aria-pressed={value === option.value}
           >
-            <span className="vc-color-selector__piece" aria-hidden="true">{option.piece}</span>
+            <option.icon
+              className={`vc-color-selector__icon vc-color-selector__icon--${option.value.toLowerCase()}`}
+              size={25}
+              strokeWidth={2.2}
+              aria-hidden="true"
+            />
             <span>{option.label}</span>
           </button>
         ))}

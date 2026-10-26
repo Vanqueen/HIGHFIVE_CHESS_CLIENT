@@ -7,15 +7,18 @@ import {
   Clock3,
   Copy,
   Flag,
+  Gamepad2,
   Handshake,
   Link2,
   LoaderCircle,
   MessageSquare,
   Play,
   RotateCcw,
+  Search,
   Swords,
   Trophy,
   UserRound,
+  UserPlus,
   Volume2,
   VolumeX,
   Zap,
@@ -1254,7 +1257,7 @@ export default function PlayPage({
                   : profile?.username?.charAt(0).toUpperCase() ?? "J"}
               </span>
               <span className="vc-game-player__identity">
-                <strong>{profile?.username ?? "Vous"} <span aria-label="Joueur">♛</span></strong>
+                <strong>{profile?.username ?? "Vous"} <Crown size={13} aria-label="Joueur" /></strong>
                 <small><i /> {myColor === "WHITE" ? "Blancs" : myColor === "BLACK" ? "Noirs" : "Connexion en cours"}</small>
               </span>
               <span className="vc-game-clock">
@@ -1378,46 +1381,44 @@ export default function PlayPage({
 
   if (!profile) {
     return (
-      <main className="player-dashboard vc-play-page">
-        <section className="welcome-line">
+      <main className="player-dashboard vc-play-page vc-play-page--guest">
+        <section className="welcome-line vc-play-guest-hero">
           <div>
             <p className="eyebrow">CHESSARENA · JEU LIBRE</p>
             <h1>Jouez aux échecs, sans inscription.</h1>
             <p className="welcome-line__text">
-              Créez une partie et invitez un ami, ou rejoignez une partie avec son lien.
-              Vous pouvez aussi ouvrir un lien de défi envoyé par un joueur inscrit.
+              Créez une partie, rejoignez un ami avec son lien ou ouvrez un défi — sans compte.
             </p>
           </div>
-          <a
-            href="/auth"
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-slate-800"
-          >
-            Connexion / inscription <ArrowRight size={16} />
-          </a>
+          <div className="vc-play-guest-hero__actions">
+            <a href="/auth" className="vc-play-guest-link vc-play-guest-link--primary">
+              Connexion / inscription <ArrowRight size={16} />
+            </a>
+            <a href="/computer" className="vc-play-guest-link">
+              <Bot size={17} /> Jouer contre l’ordinateur
+            </a>
+          </div>
         </section>
-        <a
-          href="/computer"
-          className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-slate-800"
-        >
-          <Bot size={17} /> <span className="text-gray-950">Jouer contre l’ordinateur</span>
-        </a>
 
         {error && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-500">{error}</p>}
         {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900">{notice}</p>}
 
-        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-          <div>
-            <p className="eyebrow">PARTIE RAPIDE</p>
-            <h2 className="mt-1 text-xl font-semibold text-white">Jouer contre un adversaire aléatoire</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Vous serez associé à un joueur connecté avec la même cadence. Les couleurs sont tirées au sort.
-            </p>
+        <section className="vc-play-quick-match">
+          <div className="vc-play-quick-match__copy">
+            <span className="vc-play-quick-match__icon"><Gamepad2 size={21} /></span>
+            <div>
+              <p className="eyebrow">PARTIE RAPIDE</p>
+              <h2>Jouer contre un adversaire aléatoire</h2>
+              <p>
+                Vous serez associé à un joueur connecté avec la même cadence. Les couleurs sont tirées au sort.
+              </p>
+            </div>
           </div>
           {searchingForOpponent ? (
             <button
               type="button"
               onClick={cancelMatchmaking}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-gray-300 dark:text-white hover:bg-slate-600"
+              className="vc-play-guest-action vc-play-guest-action--secondary"
             >
               <LoaderCircle className="h-4 w-4 animate-spin" /> Annuler la recherche
             </button>
@@ -1426,22 +1427,27 @@ export default function PlayPage({
               type="button"
               onClick={() => void startMatchmaking()}
               disabled={loading || (Boolean(profile) && !connected)}
-              className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-200 disabled:opacity-50"
+              className="vc-play-guest-action"
             >
-              {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
+              {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               Trouver un adversaire
             </button>
           )}
         </section>
 
-        <section className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-5">
-            <p className="eyebrow">INVITER UN ADVERSAIRE</p>
-            <h2 className="mt-1 text-xl font-semibold text-white">Créer une partie</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
+        <section className="vc-play-guest-grid">
+          <div className="vc-play-guest-card vc-play-guest-card--create">
+            <div className="vc-play-guest-card__heading">
+              <span className="vc-play-guest-card__icon"><UserPlus size={19} /></span>
+              <div>
+                <p className="eyebrow">INVITER UN ADVERSAIRE</p>
+                <h2>Créer une partie</h2>
+              </div>
+            </div>
+            <p className="vc-play-guest-card__description">
               Créez une partie anonyme et non classée, puis partagez le lien avec un ami, même s’il possède déjà un compte.
             </p>
-            <div className="mt-5">
+            <div className="vc-play-guest-setup">
               <GameSetupControls
                 initialTimeSeconds={initialTimeSeconds}
                 incrementSeconds={incrementSeconds}
@@ -1454,13 +1460,13 @@ export default function PlayPage({
                 ratedUnavailableReason="Les parties sans compte restent amicales et non classées."
               />
             </div>
-            <div className="mt-5">
+            <div className="vc-play-guest-colors">
               <ColorPreferenceSelector
                 value={colorPreference}
                 onChange={setColorPreference}
               />
-              <ChessBoardPreferences />
-              <p className="mt-2 text-xs text-slate-500">
+              <ChessBoardPreferences alwaysOpen />
+              <p className="vc-play-guest-hint">
                 Votre adversaire recevra l’autre couleur.
               </p>
             </div>
@@ -1468,13 +1474,13 @@ export default function PlayPage({
               type="button"
               onClick={() => void createAnonymousGame()}
               disabled={loading}
-              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-200 disabled:opacity-50"
+              className="vc-play-guest-action vc-play-guest-action--wide"
             >
-              {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
+              {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
               Créer un lien d’invitation
             </button>
             {shareUrl && (
-              <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950/70 p-3">
+              <div className="vc-play-share-result">
                 <label htmlFor="guest-share-link" className="mb-2 block text-xs font-medium text-slate-300">
                   Lien à partager
                 </label>
@@ -1484,12 +1490,12 @@ export default function PlayPage({
                     readOnly
                     value={shareUrl}
                     onFocus={(event) => event.currentTarget.select()}
-                    className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200"
+                    className="vc-play-share-result__input"
                   />
                   <button
                     type="button"
                     onClick={() => void copyShareUrl(shareUrl)}
-                    className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 text-xs text-white hover:bg-slate-600"
+                    className="vc-play-guest-action vc-play-guest-action--secondary"
                   >
                     <Copy className="h-3.5 w-3.5" aria-hidden="true" />
                     {copiedUrl ? "Copié" : "Copier"}
@@ -1499,14 +1505,19 @@ export default function PlayPage({
             )}
           </div>
 
-          <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-5">
-            <p className="eyebrow">REJOINDRE UNE PARTIE</p>
-            <h2 className="mt-1 text-xl font-semibold text-white">Vous avez reçu un lien ?</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
+          <div className="vc-play-guest-card vc-play-guest-card--join">
+            <div className="vc-play-guest-card__heading">
+              <span className="vc-play-guest-card__icon"><Link2 size={19} /></span>
+              <div>
+                <p className="eyebrow">REJOINDRE UNE PARTIE</p>
+                <h2>Vous avez reçu un lien ?</h2>
+              </div>
+            </div>
+            <p className="vc-play-guest-card__description">
               Ouvrez directement le lien reçu ou collez le jeton. Un ami connecté peut rejoindre une partie créée en mode invité.
             </p>
-            <form onSubmit={(event) => void joinAnonymousGame(event)} className="mt-5 space-y-3">
-              <label htmlFor="guest-invite-token" className="block text-xs text-slate-400">
+            <form onSubmit={(event) => void joinAnonymousGame(event)} className="vc-play-join-form">
+              <label htmlFor="guest-invite-token">
                 Jeton d’invitation
               </label>
               <input
@@ -1514,13 +1525,13 @@ export default function PlayPage({
                 value={inviteTokenInput}
                 onChange={(event) => setInviteTokenInput(event.target.value)}
                 autoComplete="off"
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white"
+                className="vc-play-join-form__input"
                 placeholder="Collez le jeton du lien"
               />
               <button
                 type="submit"
                 disabled={loading || !inviteTokenInput.trim()}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm font-semibold text-gray-100! hover:bg-slate-600 disabled:opacity-50"
+                className="vc-play-guest-action vc-play-guest-action--secondary"
               >
                 {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
                 Rejoindre la partie

@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Check, SlidersHorizontal } from "lucide-react";
+import { Check, Crown, Gem, Image, SlidersHorizontal } from "lucide-react";
 import {
   useChessAppearance,
 } from "../context/ChessAppearanceContext";
 import { BOARD_THEMES, type PieceStyle } from "../chess/chessAppearance";
-import { KANEO_PIECES } from "../assets/pieces/kaneo";
 
 const PIECE_STYLES: Array<{ id: PieceStyle; label: string }> = [
   { id: "realistic", label: "Réalistes" },
@@ -12,25 +11,37 @@ const PIECE_STYLES: Array<{ id: PieceStyle; label: string }> = [
   { id: "sculpted", label: "Sculptées" },
 ];
 
-export default function ChessBoardPreferences() {
+type ChessBoardPreferencesProps = {
+  alwaysOpen?: boolean;
+};
+
+export default function ChessBoardPreferences({ alwaysOpen = false }: ChessBoardPreferencesProps) {
   const [open, setOpen] = useState(false);
   const { boardTheme, pieceStyle, setBoardTheme, setPieceStyle } = useChessAppearance();
 
   return (
-    <section className="vc-board-preferences">
-      <button
-        type="button"
-        className="vc-board-preferences__toggle"
-        aria-expanded={open}
-        aria-controls="vc-board-preferences-panel"
-        onClick={() => setOpen((current) => !current)}
-      >
-        <SlidersHorizontal size={16} aria-hidden="true" />
-        Apparence de l’échiquier
-        <span>{BOARD_THEMES.find((theme) => theme.id === boardTheme)?.label} · {PIECE_STYLES.find((style) => style.id === pieceStyle)?.label}</span>
-      </button>
+    <section className={`vc-board-preferences${alwaysOpen ? " vc-board-preferences--inline" : ""}`}>
+      {alwaysOpen ? (
+        <h3 className="vc-board-preferences__inline-title">
+          <SlidersHorizontal size={15} aria-hidden="true" />
+          Apparence de l’échiquier
+          <span>{BOARD_THEMES.find((theme) => theme.id === boardTheme)?.label}</span>
+        </h3>
+      ) : (
+        <button
+          type="button"
+          className="vc-board-preferences__toggle"
+          aria-expanded={open}
+          aria-controls="vc-board-preferences-panel"
+          onClick={() => setOpen((current) => !current)}
+        >
+          <SlidersHorizontal size={16} aria-hidden="true" />
+          Apparence de l’échiquier
+          <span>{BOARD_THEMES.find((theme) => theme.id === boardTheme)?.label} · {PIECE_STYLES.find((style) => style.id === pieceStyle)?.label}</span>
+        </button>
+      )}
 
-      {open && (
+      {(alwaysOpen || open) && (
         <div className="vc-board-preferences__panel" id="vc-board-preferences-panel">
           <fieldset>
             <legend>Style du plateau</legend>
@@ -39,6 +50,8 @@ export default function ChessBoardPreferences() {
                 <button
                   key={theme.id}
                   type="button"
+                  title={theme.label}
+                  aria-label={`Choisir le thème ${theme.label}`}
                   className={`vc-board-preferences__theme${boardTheme === theme.id ? " is-selected" : ""}`}
                   aria-pressed={boardTheme === theme.id}
                   onClick={() => setBoardTheme(theme.id)}
@@ -67,15 +80,9 @@ export default function ChessBoardPreferences() {
                   aria-pressed={pieceStyle === style.id}
                   onClick={() => setPieceStyle(style.id)}
                 >
-                  {style.id === "realistic" ? (
-                    <span
-                      className="vc-board-preferences__piece-icon"
-                      aria-hidden="true"
-                      dangerouslySetInnerHTML={{ __html: KANEO_PIECES.wK }}
-                    />
-                  ) : (
-                    <span aria-hidden="true">{style.id === "sculpted" ? "♔" : "♚"}</span>
-                  )}
+                  {style.id === "realistic" && <Image className="vc-board-preferences__piece-lucide" size={20} aria-hidden="true" />}
+                  {style.id === "classic" && <Crown className="vc-board-preferences__piece-lucide" size={20} aria-hidden="true" />}
+                  {style.id === "sculpted" && <Gem className="vc-board-preferences__piece-lucide" size={20} aria-hidden="true" />}
                   {style.label}
                   {pieceStyle === style.id && <Check size={14} aria-label="Sélectionné" />}
                 </button>
@@ -83,13 +90,6 @@ export default function ChessBoardPreferences() {
             </div>
           </fieldset>
 
-          <p className="vc-board-preferences__credit">
-            Pièces « Kaneo » et thème « Sable » par{" "}
-            <a href="https://github.com/Kadagaden/chess-pieces" target="_blank" rel="noopener noreferrer">
-              Kadagaden
-            </a>{" "}
-            (CC BY 4.0)
-          </p>
         </div>
       )}
     </section>

@@ -1,11 +1,11 @@
-import { Search, Bell, Users, UserRound, Moon, Sun, Menu, Swords, MoreHorizontal } from "lucide-react";
+import { Search, Bell, Users, UserRound, Moon, Sun, Swords, MoreHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import PlayerProfileMenu from "../components/PlayerProfileMenu";
 import { useNavigation } from "../context/NavigationContext";
 import { useAuth } from "../context/AuthContext";
 import { applyTheme, getInitialTheme, type ThemeMode } from "../assets/js/theme";
 
-export default function HeaderPage({ onToggleSidebar }: { onToggleSidebar: () => void }) {
+export default function HeaderPage() {
   const { setTab, notifications, markAllRead } = useNavigation();
   const { profile } = useAuth();
   const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);
@@ -50,14 +50,6 @@ export default function HeaderPage({ onToggleSidebar }: { onToggleSidebar: () =>
   return (
     <header className="vc-header">
       <div className="vc-header__inner">
-        <button
-          type="button"
-          className="vc-header__menu-btn"
-          aria-label="Afficher ou masquer la navigation"
-          onClick={onToggleSidebar}
-        >
-          <Menu size={23} />
-        </button>
         {/* Logo */}
         <button className="vc-sidebar-brand" onClick={() => setTab("home")} aria-label="CHESSARENA, accueil">
           <span aria-hidden="true">♞</span>
