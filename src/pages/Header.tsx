@@ -73,7 +73,8 @@ export default function HeaderPage({ onToggleSidebar }: { onToggleSidebar: () =>
             title={theme === "dark" ? "Thème clair" : "Thème sombre"}
             onClick={toggleTheme}
           >
-            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === "dark" ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
+            <span>{theme === "dark" ? "Clair" : "Sombre"}</span>
           </button>
           {isAuthenticated ? (
             <>
@@ -143,15 +144,15 @@ export default function HeaderPage({ onToggleSidebar }: { onToggleSidebar: () =>
               <PlayerProfileMenu />
             </>
           ) : (
-            <a className="h-11 inline-flex items-center gap-2 p-2 border border-solid border-[#e9e6e0] dark:border-[#2b4036] rounded-lg text-[#344246] dark:text-[#e1ebe4] bg-white dark:bg-[#14251e] no-underline" href="/auth">
-              <div className="flex flex-col items-center justify-between">
-                <span className="flex w-full gap-0.5 items-center">
-                  <UserRound size={12} aria-hidden="true" /><strong className="text-[12px]">Invité</strong>
-                </span>
-                <small className="text-[9px] text-[#829094] dark:text-[#a0b1a8] ">Connexion </small>
-                <small className="text-[9px] text-[#829094] dark:text-[#a0b1a8] ">Inscription</small>
-              </div>
-            </a>
+            <div className="vc-header__guest-actions" aria-label="Accès au compte">
+              <a className="vc-header__guest-login" href="/auth">
+                <UserRound size={15} aria-hidden="true" />
+                Se connecter
+              </a>
+              <a className="vc-header__guest-signup" href="/auth?mode=signup">
+                Créer un compte
+              </a>
+            </div>
           )}
         </div>
       </div>

@@ -44,4 +44,4 @@
 ## Décisions
 Pour chaque décision importante, noter le choix, la raison et les pages concernées.
 - **Thème sombre par défaut avec bascule persistée** — toutes les pages. Voir `src/assets/js/theme.ts` et `index.html` (`class="dark"`).
-- **Personnalisation de l'échiquier** (thème de plateau et style de pièces, persistés en `localStorage` sous la clé `chessarena-board-appearance`) — pages de jeu (`PlayPage`, `ComputerGamePage`, etc.). Voir `src/chess/chessAppearance.ts` et `src/context/ChessAppearanceContext.tsx`. Détail consigné dans `docs/DECISIONS.md`.
+- **Personnalisation de l'échiquier** (15 thèmes de plateau, dont noir et blanc, et styles de pièces, persistés en `localStorage` sous la clé `chessarena-board-appearance`) — choix des thèmes aussi disponible sur l'accueil invité. Voir `src/chess/chessAppearance.ts` et `src/context/ChessAppearanceContext.tsx`. Détail consigné dans `docs/DECISIONS.md`.

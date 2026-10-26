@@ -18,7 +18,9 @@ const BOARD_ROWS = [
 ];
 
 export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup'>(() =>
+    new URLSearchParams(window.location.search).get('mode') === 'signup' ? 'signup' : 'signin',
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -53,6 +55,10 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
 
   const changeMode = (nextMode: 'signin' | 'signup') => {
     setMode(nextMode);
+    const url = new URL(window.location.href);
+    if (nextMode === 'signup') url.searchParams.set('mode', 'signup');
+    else url.searchParams.delete('mode');
+    window.history.replaceState(window.history.state, '', url);
     setError(null);
     setNotice(null);
     setShowPassword(false);

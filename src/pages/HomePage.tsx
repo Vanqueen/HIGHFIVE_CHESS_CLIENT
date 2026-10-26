@@ -13,8 +13,10 @@ import {
 import { Chess } from "chess.js";
 import axiosInstance from "../axios";
 import { useAuth } from "../context/AuthContext";
+import { useChessAppearance } from "../context/ChessAppearanceContext";
 import { useNavigation } from "../context/NavigationContext";
 import ChessBoard from "../components/ChessBoard";
+import BoardThemeOptions from "../components/BoardThemeOptions";
 
 type HomeGame = {
   id: number;
@@ -72,6 +74,7 @@ type GameLaunchPanelProps = {
   subheading: string;
   primaryLabel: string;
   showPicker: boolean;
+  showBoardThemes?: boolean;
   onStart: (seconds: number, increment: number) => void;
   secondaryActions: SecondaryAction[];
 };
@@ -82,6 +85,7 @@ function GameLaunchPanel({
   subheading,
   primaryLabel,
   showPicker,
+  showBoardThemes = false,
   onStart,
   secondaryActions,
 }: GameLaunchPanelProps) {
@@ -101,6 +105,14 @@ function GameLaunchPanel({
         {meta && <p className="vc-home-launch__meta">{meta}</p>}
         <p>{subheading}</p>
       </div>
+
+      {showBoardThemes && (
+        <section className="vc-home-theme-picker" aria-label="Choix du thème de l’échiquier">
+          <h2>Choisis ton plateau</h2>
+          <p>Sélectionne les couleurs qui te plaisent.</p>
+          <BoardThemeOptions />
+        </section>
+      )}
 
       {showPicker && (
         <>
@@ -190,6 +202,7 @@ function GameLaunchPanel({
 
 export default function HomePage({ onStartGame }: HomePageProps) {
   const { profile, accessToken } = useAuth();
+  const { boardTheme } = useChessAppearance();
   const { setTab } = useNavigation();
   const [hasActiveGame, setHasActiveGame] = useState(false);
   const [upcomingTournaments, setUpcomingTournaments] = useState<HomeTournament[]>([]);
@@ -247,7 +260,7 @@ export default function HomePage({ onStartGame }: HomePageProps) {
         legalTargets={[]}
         lastMove={null}
         onSquareClick={() => {}}
-        boardTheme="sand"
+        boardTheme={boardTheme}
         pieceStyle="realistic"
       />
     </div>
@@ -263,6 +276,7 @@ export default function HomePage({ onStartGame }: HomePageProps) {
             subheading="Choisis une cadence et trouve un adversaire en quelques secondes — sans créer de compte."
             primaryLabel="Jouer maintenant"
             showPicker
+            showBoardThemes
             onStart={onStartGame}
             secondaryActions={[
               {

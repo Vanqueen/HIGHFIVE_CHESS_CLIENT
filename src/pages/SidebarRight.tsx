@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, BookOpen, Gamepad2, Swords, Trophy, Zap, ShieldCheck, ChartNoAxesColumn, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Gamepad2, Swords, Trophy } from "lucide-react";
 import axiosInstance from "../axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigation } from "../context/NavigationContext";
@@ -60,24 +60,7 @@ export default function SidebarRight() {
   }, [profile?.id]);
 
   if (!profile?.id) {
-    return (
-      <aside className="vc-sidebar-right">
-        <section className="vc-guest-benefits">
-          <h2>Pourquoi jouer sur CHESSARENA ?</h2>
-          <ul>
-            <li><span><Zap size={17} /></span><p>Des parties rapides<br />et fluides</p></li>
-            <li><span><ShieldCheck size={17} /></span><p>Une expérience<br />bienveillante</p></li>
-            <li><span><ChartNoAxesColumn size={17} /></span><p>Un suivi de ta<br />progression</p></li>
-            <li><span><Star size={17} /></span><p>Une expérience simple<br />et agréable</p></li>
-          </ul>
-          <blockquote>
-            <strong>“</strong>
-            <p>Chaque partie est une nouvelle occasion d’apprendre.</p>
-            <small>— CHESSARENA</small>
-          </blockquote>
-        </section>
-      </aside>
-    );
+    return null;
   }
 
   return (
