@@ -1,17 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Bot,
   BookOpen,
   CalendarDays,
   Check,
-  Clock3,
   Gamepad2,
-  Medal,
   Swords,
   Trophy,
   Users,
-  Zap,
 } from "lucide-react";
 import { Chess } from "chess.js";
 import axiosInstance from "../axios";
@@ -62,6 +59,135 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Impossible de charger vos données.";
 }
 
+type SecondaryAction = {
+  label: string;
+  detail: string;
+  icon: ReactNode;
+  onClick: () => void;
+};
+
+type GameLaunchPanelProps = {
+  heading: ReactNode;
+  meta?: string;
+  subheading: string;
+  primaryLabel: string;
+  showPicker: boolean;
+  onStart: (seconds: number, increment: number) => void;
+  secondaryActions: SecondaryAction[];
+};
+
+function GameLaunchPanel({
+  heading,
+  meta,
+  subheading,
+  primaryLabel,
+  showPicker,
+  onStart,
+  secondaryActions,
+}: GameLaunchPanelProps) {
+  const [gameFormat, setGameFormat] = useState<GameFormat>("classic");
+  const [selectedControl, setSelectedControl] = useState("10 + 0");
+  const [customIncrement, setCustomIncrement] = useState(0);
+  const selected = TIME_CONTROLS.find((control) => control.label === selectedControl)
+    ?? TIME_CONTROLS[2];
+  const formatDescription = gameFormat === "custom"
+    ? "Ajuste l’incrément de temps selon tes préférences."
+    : GAME_FORMATS.find((format) => format.id === gameFormat)?.description;
+
+  return (
+    <aside className="vc-home-launch__panel">
+      <div className="vc-home-launch__intro">
+        <h1>{heading}</h1>
+        {meta && <p className="vc-home-launch__meta">{meta}</p>}
+        <p>{subheading}</p>
+      </div>
+
+      {showPicker && (
+        <>
+          <div className="vc-home-launch__tabs" role="tablist" aria-label="Mode de jeu">
+            {GAME_FORMATS.map((format) => (
+              <button
+                key={format.id}
+                type="button"
+                role="tab"
+                aria-selected={gameFormat === format.id}
+                className={gameFormat === format.id ? "is-active" : ""}
+                onClick={() => {
+                  setGameFormat(format.id);
+                  const defaultControl = {
+                    classic: "10 + 0",
+                    rapid: "5 + 0",
+                    blitz: "3 + 0",
+                    custom: selectedControl,
+                  }[format.id];
+                  setSelectedControl(defaultControl);
+                  const defaultPreset = TIME_CONTROLS.find((control) => control.label === defaultControl);
+                  if (defaultPreset) setCustomIncrement(defaultPreset.increment);
+                }}
+              >
+                {format.label}
+              </button>
+            ))}
+          </div>
+          <p className="vc-home-launch__format-description">{formatDescription}</p>
+          <div className="vc-home-launch__times" role="group" aria-label="Cadence de la partie">
+            {TIME_CONTROLS.map((control) => (
+              <button
+                key={control.label}
+                type="button"
+                aria-pressed={selected.label === control.label}
+                className={selected.label === control.label ? "is-selected" : ""}
+                onClick={() => {
+                  setSelectedControl(control.label);
+                  setCustomIncrement(control.increment);
+                }}
+              >
+                <strong>{control.label}</strong>
+                <small>{control.detail}</small>
+                {selected.label === control.label && <Check size={14} aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+          {gameFormat === "custom" && (
+            <label className="vc-home-launch__increment">
+              Incrément par coup
+              <select
+                value={customIncrement}
+                onChange={(event) => setCustomIncrement(Number(event.target.value))}
+              >
+                <option value={0}>0 seconde</option>
+                <option value={2}>2 secondes</option>
+                <option value={5}>5 secondes</option>
+                <option value={10}>10 secondes</option>
+              </select>
+            </label>
+          )}
+        </>
+      )}
+
+      <button
+        type="button"
+        className="vc-home-launch__start"
+        onClick={() => onStart(selected.seconds, gameFormat === "custom" ? customIncrement : selected.increment)}
+      >
+        <Gamepad2 size={18} /> {primaryLabel}
+      </button>
+
+      <div className="vc-home-launch__secondary">
+        {secondaryActions.map((action) => (
+          <button key={action.label} type="button" onClick={action.onClick}>
+            <span className="vc-home-launch__secondary-icon">{action.icon}</span>
+            <span className="vc-home-launch__secondary-copy">
+              <strong>{action.label}</strong>
+              <small>{action.detail}</small>
+            </span>
+          </button>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
 export default function HomePage({ onStartGame }: HomePageProps) {
   const { profile, accessToken } = useAuth();
   const { setTab } = useNavigation();
@@ -70,10 +196,7 @@ export default function HomePage({ onStartGame }: HomePageProps) {
   const [ratings, setRatings] = useState<HomeRatings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [gameFormat, setGameFormat] = useState<GameFormat>("classic");
-  const [selectedControl, setSelectedControl] = useState("10 + 0");
-  const [customIncrement, setCustomIncrement] = useState(0);
-  const chessPreview = new Chess();
+  const startingPosition = new Chess();
 
   useEffect(() => {
     if (!profile?.id || !accessToken) return;
@@ -116,199 +239,114 @@ export default function HomePage({ onStartGame }: HomePageProps) {
     };
   }, [accessToken, profile?.id]);
 
-  if (!profile?.id) {
-    const visibleControls = TIME_CONTROLS;
-    const selected = visibleControls.find((control) => control.label === selectedControl)
-      ?? visibleControls[2];
-    const formatDescription = gameFormat === "custom"
-      ? "Ajuste l’incrément de temps selon tes préférences."
-      : GAME_FORMATS.find((format) => format.id === gameFormat)?.description;
+  const board = (
+    <div className="vc-home-launch__board" aria-hidden="true">
+      <ChessBoard
+        fen={startingPosition.fen()}
+        selectedSquare={null}
+        legalTargets={[]}
+        lastMove={null}
+        onSquareClick={() => {}}
+        boardTheme="sand"
+        pieceStyle="realistic"
+      />
+    </div>
+  );
 
+  if (!profile?.id) {
     return (
       <div className="vc-guest-home">
-        <section className="vc-guest-welcome">
-          <div>
-            <p className="vc-guest-eyebrow">CHESSARENA · JEU LIBRE</p>
-            <h1>Prêt à jouer ?</h1>
-            <p>Choisis un mode et trouve un adversaire en quelques secondes.<br />Que tu sois débutant ou confirmé, chaque partie compte !</p>
-          </div>
-          <div className="vc-guest-welcome__piece" aria-hidden="true">♟</div>
+        <section className="vc-home-launch">
+          {board}
+          <GameLaunchPanel
+            heading="Prêt à jouer ?"
+            subheading="Choisis une cadence et trouve un adversaire en quelques secondes — sans créer de compte."
+            primaryLabel="Jouer maintenant"
+            showPicker
+            onStart={onStartGame}
+            secondaryActions={[
+              {
+                label: "Jouer avec un ami",
+                detail: "Partage un lien et défie un proche",
+                icon: <Users aria-hidden="true" />,
+                onClick: () => setTab("play"),
+              },
+              {
+                label: "Jouer contre l’ordinateur",
+                detail: "Entraîne-toi à ton rythme, sans adversaire",
+                icon: <Bot aria-hidden="true" />,
+                onClick: () => setTab("computer"),
+              },
+            ]}
+          />
         </section>
-
-        <div className="vc-guest-main-grid">
-          <div className="vc-guest-game-column">
-            <section className="vc-guest-config" aria-label="Configurer une partie">
-              <div className="vc-guest-format-tabs" role="tablist" aria-label="Mode de jeu">
-                {GAME_FORMATS.map((format) => (
-                  <button
-                    key={format.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={gameFormat === format.id}
-                    className={gameFormat === format.id ? "is-active" : ""}
-                    onClick={() => {
-                      setGameFormat(format.id);
-                      const defaultControl = {
-                        classic: "10 + 0",
-                        rapid: "5 + 0",
-                        blitz: "3 + 0",
-                        custom: selectedControl,
-                      }[format.id];
-                      setSelectedControl(defaultControl);
-                      const defaultPreset = TIME_CONTROLS.find((control) => control.label === defaultControl);
-                      if (defaultPreset) setCustomIncrement(defaultPreset.increment);
-                    }}
-                  >
-                    {format.label}
-                  </button>
-                ))}
-              </div>
-              <h2>Partie {GAME_FORMATS.find((format) => format.id === gameFormat)?.label}</h2>
-              <p className="vc-guest-config__description">{formatDescription}</p>
-              <div className="vc-guest-time-options" role="group" aria-label="Cadence de la partie">
-                {visibleControls.map((control) => (
-                  <button
-                    key={control.label}
-                    type="button"
-                    aria-pressed={selected?.label === control.label}
-                    className={selected?.label === control.label ? "is-selected" : ""}
-                    onClick={() => {
-                      setSelectedControl(control.label);
-                      setCustomIncrement(control.increment);
-                    }}
-                  >
-                    <strong>{control.label}</strong>
-                    <small>{control.detail}</small>
-                    {selected?.label === control.label && <Check size={14} aria-hidden="true" />}
-                  </button>
-                ))}
-              </div>
-              {gameFormat === "custom" && (
-                <label className="vc-guest-increment">
-                  Incrément par coup
-                  <select
-                    value={customIncrement}
-                    onChange={(event) => setCustomIncrement(Number(event.target.value))}
-                  >
-                    <option value={0}>0 seconde</option>
-                    <option value={2}>2 secondes</option>
-                    <option value={5}>5 secondes</option>
-                    <option value={10}>10 secondes</option>
-                  </select>
-                </label>
-              )}
-              <button
-                type="button"
-                className="vc-guest-start"
-                onClick={() => onStartGame(selected?.seconds ?? 600, gameFormat === "custom" ? customIncrement : selected?.increment ?? 0)}
-              >
-                <Gamepad2 size={17} /> Jouer maintenant
-              </button>
-            </section>
-
-            <button
-              type="button"
-              className="vc-guest-friend"
-              onClick={() => setTab("play")}
-            >
-              <span className="vc-guest-friend__icon"><Users size={21} /></span>
-              <span><strong>Jouer avec un ami</strong><small>Partage un lien et défie un proche</small></span>
-              <ArrowRight size={18} aria-hidden="true" />
-            </button>
-          </div>
-
-          <aside className="vc-guest-board-card">
-            <div className="vc-guest-preview-board" aria-hidden="true">
-              <ChessBoard
-                fen={chessPreview.fen()}
-                selectedSquare={null}
-                legalTargets={[]}
-                lastMove={null}
-                onSquareClick={() => {}}
-              />
-            </div>
-            <p>Un échiquier, mille possibilités.</p>
-            <span aria-hidden="true" />
-          </aside>
-        </div>
       </div>
     );
   }
 
-  const actions = [
+  const links = [
     {
       title: "Défier un joueur",
       description: "Lancez un défi ou invitez un ami par lien.",
       icon: <Swords aria-hidden="true" />,
-      className: "is-green",
       tab: "play" as const,
-    },
-    {
-      title: "Jouer contre l’ordinateur",
-      description: "Entraînez-vous à votre rythme, sans adversaire.",
-      icon: <Bot aria-hidden="true" />,
-      className: "is-violet",
-      tab: "computer" as const,
     },
     {
       title: "Mes parties",
       description: "Retrouvez vos parties et vos résultats.",
       icon: <Gamepad2 aria-hidden="true" />,
-      className: "is-blue",
       tab: "games" as const,
     },
     {
-      title: "Tournois",
-      description: "Découvrez les compétitions disponibles.",
-      icon: <Trophy aria-hidden="true" />,
-      className: "is-gold",
-      tab: "tournaments" as const,
+      title: "Apprendre à jouer",
+      description: "Revoyez les règles et progressez pas à pas.",
+      icon: <BookOpen aria-hidden="true" />,
+      tab: "learn" as const,
     },
     {
       title: "Communauté",
       description: "Retrouvez les joueurs et vos amis.",
       icon: <Users aria-hidden="true" />,
-      className: "is-violet",
       tab: "friends" as const,
     },
   ];
 
   return (
     <div className="vc-home-modern">
-      <section className="vc-home-hero">
-        <div className="vc-home-hero__copy">
-          <span className="vc-home-eyebrow">BIENVENUE SUR</span>
-          <h1>CHESSARENA</h1>
-          <p className="vc-home-hero__motto">Jouez <i /> Progressez <i /> Partagez</p>
-          <p>
-            Bonjour{profile?.username ? ` ${profile.username}` : ""} ! Que vous soyez
-            débutant ou joueur confirmé, trouvez votre prochaine partie.
-          </p>
-          <div className="vc-home-hero__actions">
-            <button type="button" className="vc-home-primary" onClick={() => setTab("play")}>
-              <Gamepad2 size={18} />
-              {hasActiveGame ? "Reprendre ma partie" : "Jouer maintenant"}
-            </button>
-            <button type="button" className="vc-home-secondary" onClick={() => setTab("learn")}>
-              Que vous soyez débutant ou joueur confirmé
-            </button>
-            <button
-              type="button"
-              className="vc-home-secondary vc-home-computer"
-              onClick={() => setTab("computer")}
-            >
-              <Bot size={17} aria-hidden="true" />
-              Jouer contre l’ordinateur
-            </button>
-          </div>
-        </div>
-        <div className="vc-home-hero__board" aria-hidden="true">
-          <div className="vc-home-board">
-            <span className="vc-home-board__piece">♞</span>
-            <span className="vc-home-board__piece vc-home-board__piece--light">♙</span>
-          </div>
-          <span className="vc-home-hero__note">Un coup<br />à la fois...</span>
-        </div>
+      <section className="vc-home-launch">
+        {board}
+        <GameLaunchPanel
+          heading={`Bonjour${profile?.username ? `, ${profile.username}` : ""}`}
+          meta={ratings ? `${ratings.overallRating} Elo` : undefined}
+          subheading={
+            hasActiveGame
+              ? "Une partie vous attend là où vous l’avez laissée."
+              : "Choisissez une cadence et retrouvez un adversaire en quelques secondes."
+          }
+          primaryLabel={hasActiveGame ? "Reprendre ma partie" : "Jouer maintenant"}
+          showPicker={!hasActiveGame}
+          onStart={hasActiveGame ? () => setTab("play") : onStartGame}
+          secondaryActions={[
+            {
+              label: "Jouer avec un ami",
+              detail: "Partage un lien et défie un proche",
+              icon: <Users aria-hidden="true" />,
+              onClick: () => setTab("play"),
+            },
+            {
+              label: "Jouer contre l’ordinateur",
+              detail: "Entraîne-toi à ton rythme, sans adversaire",
+              icon: <Bot aria-hidden="true" />,
+              onClick: () => setTab("computer"),
+            },
+            {
+              label: "Tournois",
+              detail: "Affrontez la communauté",
+              icon: <Trophy aria-hidden="true" />,
+              onClick: () => setTab("tournaments"),
+            },
+          ]}
+        />
       </section>
 
       {error && (
@@ -317,56 +355,23 @@ export default function HomePage({ onStartGame }: HomePageProps) {
         </p>
       )}
 
-      <section className="vc-home-modes">
-        <div className="vc-home-section-heading">
-          <div>
-            <h2>Modes de jeu</h2>
-          </div>
-          <button type="button" className="vc-home-text-link" onClick={() => setTab("play")}>
-            Voir tout <ArrowRight size={15} />
-          </button>
-        </div>
-        <div className="vc-home-mode-grid">
-          {[
-            { title: "Rapide", detail: "Parties de 10 min ou moins", rating: ratings?.modes.find((mode) => mode.category === "RAPID")?.rating ?? 1500, icon: <Zap />, theme: "is-green", action: () => onStartGame(600, 0) },
-            { title: "Classique", detail: "Plus de temps, plus de stratégie", rating: ratings?.modes.find((mode) => mode.category === "CLASSICAL")?.rating ?? 1500, icon: <Clock3 />, theme: "is-blue", action: () => onStartGame(900, 10) },
-            { title: "Blitz", detail: "Parties intenses et rapides", rating: ratings?.modes.find((mode) => mode.category === "BLITZ")?.rating ?? 1500, icon: <Medal />, theme: "is-violet", action: () => onStartGame(180, 0) },
-            { title: "Tournois", detail: "Affrontez la communauté", rating: undefined, icon: <Users />, theme: "is-orange", action: () => setTab("tournaments") },
-          ].map((mode) => (
-            <article className={`vc-home-mode-card ${mode.theme}`} key={mode.title}>
-              <span className="vc-home-mode-card__icon">{mode.icon}</span>
-              <strong>{mode.title}</strong>
-              <small>{mode.detail}</small>
-              {mode.rating !== undefined && (
-                <span className="vc-home-mode-card__rating">{mode.rating} <small>Elo</small></span>
-              )}
-              <button type="button" onClick={mode.action}>
-                {mode.title === "Tournois" ? "Voir" : "Jouer"}
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
-
       <section className="vc-home-tournaments">
         <div className="vc-home-section-heading">
           <h2>Prochains tournois</h2>
           <button type="button" className="vc-home-text-link" onClick={() => setTab("tournaments")}>
-            Voir tout <ArrowRight size={15} />
+            Voir tout
           </button>
         </div>
         {upcomingTournaments.length > 0 ? (
-          <div className="vc-home-tournament-grid">
+          <ol className="vc-home-tournament-list">
             {upcomingTournaments.map((tournament, index) => (
-              <article className={`vc-home-tournament-card tone-${index + 1}`} key={tournament.id}>
-                <span className="vc-home-tournament-card__icon">
-                  {index === 0 ? <Trophy /> : index === 1 ? <Medal /> : <CalendarDays />}
-                </span>
-                <div>
+              <li className="vc-home-tournament-row" key={tournament.id}>
+                <span className="vc-home-tournament-row__index">{String(index + 1).padStart(2, "0")}</span>
+                <div className="vc-home-tournament-row__info">
                   <strong>{tournament.name}</strong>
                   <small>
                     {tournament.format === "SWISS" ? "Système suisse" : "Toutes rondes"}
-                    {" · "}
+                    {" — "}
                     {new Date(tournament.startsAt).toLocaleString("fr-FR", {
                       dateStyle: "medium",
                       timeStyle: "short",
@@ -374,9 +379,9 @@ export default function HomePage({ onStartGame }: HomePageProps) {
                   </small>
                 </div>
                 <button type="button" onClick={() => setTab("tournaments")}>Voir</button>
-              </article>
+              </li>
             ))}
-          </div>
+          </ol>
         ) : (
           <div className="vc-home-tournaments-empty">
             <CalendarDays size={19} />
@@ -387,38 +392,27 @@ export default function HomePage({ onStartGame }: HomePageProps) {
 
       <section className="vc-home-discover">
         <div className="vc-home-section-heading">
-          <div>
-            <span className="vc-home-eyebrow"><BookOpen size={13} /> VOTRE CLUB</span>
-            <h2>Explorez ChessArena</h2>
-          </div>
+          <h2>Explorer ChessArena</h2>
         </div>
-        <div className="vc-home-action-grid">
-          {actions.map((action) => (
-            <button
-              type="button"
-              key={action.title}
-              className={`vc-home-action ${action.className}`}
-              onClick={() => setTab(action.tab)}
-            >
-              <span className="vc-home-action__icon">{action.icon}</span>
-              <span className="vc-home-action__copy">
-                <strong>{action.title}</strong>
-                <small>{action.description}</small>
-              </span>
-              <ArrowRight className="vc-home-action__arrow" size={17} aria-hidden="true" />
-            </button>
+        <ul className="vc-home-link-list">
+          {links.map((link) => (
+            <li key={link.title}>
+              <button
+                type="button"
+                className="vc-home-link"
+                onClick={() => setTab(link.tab)}
+              >
+                <span className="vc-home-link__icon">{link.icon}</span>
+                <span className="vc-home-link__copy">
+                  <strong>{link.title}</strong>
+                  <small>{link.description}</small>
+                </span>
+                <ArrowRight className="vc-home-link__arrow" size={17} aria-hidden="true" />
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
-
-      <button type="button" className="vc-home-learn" onClick={() => setTab("play")}>
-        <span className="vc-home-learn__icon"><Swords size={21} /></span>
-        <span>
-          <strong>Prêt pour un nouveau défi ?</strong>
-          <small>Choisissez votre cadence et invitez quelqu’un en quelques secondes.</small>
-        </span>
-        <ArrowRight size={18} aria-hidden="true" />
-      </button>
     </div>
   );
 }

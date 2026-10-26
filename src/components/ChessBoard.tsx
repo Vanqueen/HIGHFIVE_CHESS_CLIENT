@@ -1,6 +1,8 @@
 import { useMemo, type ReactNode } from 'react';
 import type { Square } from 'chess.js';
 import { useChessAppearance } from '../context/ChessAppearanceContext';
+import type { BoardTheme, PieceStyle } from '../chess/chessAppearance';
+import { KANEO_PIECES } from '../assets/pieces/kaneo';
 
 const PIECE_UNICODE: Record<string, string> = {
   wK: '\u2654', wQ: '\u2655', wR: '\u2656', wB: '\u2657', wN: '\u2658', wP: '\u2659',
@@ -14,6 +16,10 @@ type ChessBoardProps = {
   lastMove: { from: Square; to: Square } | null;
   onSquareClick: (square: Square) => void;
   flipped?: boolean;
+  /** Overrides the user's saved preference — for decorative/preview boards only. */
+  boardTheme?: BoardTheme;
+  /** Overrides the user's saved preference — for decorative/preview boards only. */
+  pieceStyle?: PieceStyle;
 };
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -121,8 +127,12 @@ export default function ChessBoard({
   lastMove,
   onSquareClick,
   flipped = false,
+  boardTheme: boardThemeOverride,
+  pieceStyle: pieceStyleOverride,
 }: ChessBoardProps) {
-  const { boardTheme, pieceStyle } = useChessAppearance();
+  const appearance = useChessAppearance();
+  const boardTheme = boardThemeOverride ?? appearance.boardTheme;
+  const pieceStyle = pieceStyleOverride ?? appearance.pieceStyle;
   const board = useMemo(() => fenToBoard(fen), [fen]);
   const files = flipped ? [...FILES].reverse() : FILES;
   const ranks = flipped ? [...RANKS].reverse() : RANKS;
@@ -157,7 +167,14 @@ export default function ChessBoard({
                     ${isLastMove && !isSelected ? 'is-last-move bg-yellow-300/40' : ''}`}
                 >
                   {piece && (
-                    pieceStyle === 'sculpted' ? (
+                    pieceStyle === 'realistic' ? (
+                      <span
+                        className="vc-chess-piece-image"
+                        role="img"
+                        aria-label={`${PIECE_NAMES[piece[1]] ?? 'pièce'} ${piece[0] === 'w' ? 'blanche' : 'noire'}`}
+                        dangerouslySetInnerHTML={{ __html: KANEO_PIECES[piece] }}
+                      />
+                    ) : pieceStyle === 'sculpted' ? (
                       <SculptedPiece kind={piece[1]} color={piece[0] === 'w' ? 'white' : 'black'} />
                     ) : (
                       <span

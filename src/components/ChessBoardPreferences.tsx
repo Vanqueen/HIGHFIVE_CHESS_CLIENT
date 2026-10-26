@@ -4,8 +4,10 @@ import {
   useChessAppearance,
 } from "../context/ChessAppearanceContext";
 import { BOARD_THEMES, type PieceStyle } from "../chess/chessAppearance";
+import { KANEO_PIECES } from "../assets/pieces/kaneo";
 
 const PIECE_STYLES: Array<{ id: PieceStyle; label: string }> = [
+  { id: "realistic", label: "Réalistes" },
   { id: "classic", label: "Classiques" },
   { id: "sculpted", label: "Sculptées" },
 ];
@@ -65,13 +67,29 @@ export default function ChessBoardPreferences() {
                   aria-pressed={pieceStyle === style.id}
                   onClick={() => setPieceStyle(style.id)}
                 >
-                  <span aria-hidden="true">{style.id === "sculpted" ? "♔" : "♚"}</span>
+                  {style.id === "realistic" ? (
+                    <span
+                      className="vc-board-preferences__piece-icon"
+                      aria-hidden="true"
+                      dangerouslySetInnerHTML={{ __html: KANEO_PIECES.wK }}
+                    />
+                  ) : (
+                    <span aria-hidden="true">{style.id === "sculpted" ? "♔" : "♚"}</span>
+                  )}
                   {style.label}
                   {pieceStyle === style.id && <Check size={14} aria-label="Sélectionné" />}
                 </button>
               ))}
             </div>
           </fieldset>
+
+          <p className="vc-board-preferences__credit">
+            Pièces « Kaneo » et thème « Sable » par{" "}
+            <a href="https://github.com/Kadagaden/chess-pieces" target="_blank" rel="noopener noreferrer">
+              Kadagaden
+            </a>{" "}
+            (CC BY 4.0)
+          </p>
         </div>
       )}
     </section>

@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { BOARD_THEMES, type BoardTheme, type PieceStyle } from "../chess/chessAppearance";
 
 const STORAGE_KEY = "chessarena-board-appearance";
-const DEFAULT_PREFERENCES: ChessAppearance = { boardTheme: "forest", pieceStyle: "classic" };
+const DEFAULT_PREFERENCES: ChessAppearance = { boardTheme: "forest", pieceStyle: "realistic" };
+const PIECE_STYLES: PieceStyle[] = ["realistic", "sculpted", "classic"];
 
 type ChessAppearance = { boardTheme: BoardTheme; pieceStyle: PieceStyle };
 type ChessAppearanceContextValue = ChessAppearance & {
@@ -16,6 +17,10 @@ function isBoardTheme(value: unknown): value is BoardTheme {
   return BOARD_THEMES.some((theme) => theme.id === value);
 }
 
+function isPieceStyle(value: unknown): value is PieceStyle {
+  return PIECE_STYLES.includes(value as PieceStyle);
+}
+
 function readPreferences(): ChessAppearance {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -25,7 +30,7 @@ function readPreferences(): ChessAppearance {
     const preferences = parsed as Record<string, unknown>;
     return {
       boardTheme: isBoardTheme(preferences.boardTheme) ? preferences.boardTheme : DEFAULT_PREFERENCES.boardTheme,
-      pieceStyle: preferences.pieceStyle === "classic" ? "classic" : DEFAULT_PREFERENCES.pieceStyle,
+      pieceStyle: isPieceStyle(preferences.pieceStyle) ? preferences.pieceStyle : DEFAULT_PREFERENCES.pieceStyle,
     };
   } catch (error) {
     console.warn("Impossible de lire les préférences de l’échiquier.", error);
