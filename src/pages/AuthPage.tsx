@@ -1,21 +1,27 @@
 import { useState, type ChangeEvent } from 'react';
-import { Crown, Eye, EyeOff, ShieldCheck, Sparkles, StepBack } from 'lucide-react';
+import { ChessKnight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { KANEO_PIECES } from '../assets/pieces/kaneo';
+import './AuthPage.css';
 
 type AuthPageProps = {
   onAuthSuccess: () => void;
 };
 
 const BOARD_ROWS = [
-  '♜♞♝♛♚♝♞♜',
-  '♟♟♟♟♟♟♟♟',
-  '........',
-  '........',
-  '........',
-  '........',
-  '♙♙♙♙♙♙♙♙',
-  '♖♘♗♕♔♗♘♖',
+  ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
+  ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
+  ['', '', '', '', '', '', '', ''],
+  ['', '', '', '', '', '', '', ''],
+  ['', '', '', '', '', '', '', ''],
+  ['', '', '', '', '', '', '', ''],
+  ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
+  ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR'],
 ];
+
+const PIECE_LABELS: Record<string, string> = {
+  K: 'roi', Q: 'reine', R: 'tour', B: 'fou', N: 'cavalier', P: 'pion',
+};
 
 export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>(() =>
@@ -111,28 +117,16 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
 
   return (
     <main className="auth-page">
-      <div className="auth-page__ambient" aria-hidden="true">
-        <span />
-        <span />
-      </div>
-
-      <div className="auth-layout">
+      <div className={`auth-layout${mode === 'signup' ? ' auth-layout--signup' : ''}`}>
         <section className="auth-panel auth-panel--form">
           <a className="auth-brand" href="/" aria-label="ChessArena, accueil">
-            <span className="auth-brand__mark"><Crown size={23} strokeWidth={2.2} /></span>
+            <span className="auth-brand__mark"><ChessKnight size={23} strokeWidth={2.2} /></span>
             <span className="auth-brand__name">CHESS<span>ARENA</span></span>
           </a>
 
           <div className="auth-content">
             <header className="auth-intro">
-              <div className='flex justify-between items-center gap-2'>
-                <p className="auth-eyebrow"><Sparkles size={14} /> Votre prochaine partie vous attend</p>
-                <span className='flex items-center gap-2 text-xs text-slate-500'>
-                  <StepBack />
-                  <a href="/">Accueil</a>
-                </span>
-              </div>
-              <h1>{mode === 'signin' ? 'Heureux de vous revoir.' : 'Entrez dans la partie.'}</h1>
+              <h1>{mode === 'signin' ? 'Heureux de vous revoir' : 'Entrez dans la partie'}</h1>
               <p>
                 {mode === 'signin'
                   ? 'Connectez-vous pour retrouver vos parties et votre progression.'
@@ -141,35 +135,9 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
             </header>
 
             <div className="auth-card">
-              <div className="auth-tabs" role="tablist" aria-label="Connexion ou inscription">
-                <button
-                  type="button"
-                  role="tab"
-                  id="auth-tab-signin"
-                  aria-selected={mode === 'signin'}
-                  aria-controls="auth-form-panel"
-                  className={mode === 'signin' ? 'is-active' : ''}
-                  onClick={() => changeMode('signin')}
-                >
-                  Connexion
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  id="auth-tab-signup"
-                  aria-selected={mode === 'signup'}
-                  aria-controls="auth-form-panel"
-                  className={mode === 'signup' ? 'is-active' : ''}
-                  onClick={() => changeMode('signup')}
-                >
-                  Inscription
-                </button>
-              </div>
-
               <form
                 id="auth-form-panel"
-                role="tabpanel"
-                aria-labelledby={mode === 'signin' ? 'auth-tab-signin' : 'auth-tab-signup'}
+                aria-label={mode === 'signin' ? 'Connexion' : 'Inscription'}
                 className="auth-form"
                 onSubmit={handleSubmit}
               >
@@ -268,6 +236,16 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
               </p>
             </div>
 
+            <p className="auth-mode-switch">
+              {mode === 'signin' ? 'Vous n’avez pas encore de compte ?' : 'Vous avez déjà un compte ?'}{' '}
+              <button
+                type="button"
+                onClick={() => changeMode(mode === 'signin' ? 'signup' : 'signin')}
+              >
+                {mode === 'signin' ? 'Créer un compte' : 'Se connecter'}
+              </button>
+            </p>
+
             <p className="auth-terms">
               En continuant, vous acceptez de jouer loyalement et de respecter la communauté.
             </p>
@@ -279,28 +257,48 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
         <aside className="auth-panel auth-panel--visual" aria-label="Découvrez ChessArena">
           <div className="auth-visual__glow" aria-hidden="true" />
           <div className="auth-visual__topline">
-            <span className="auth-visual__status"><i /> La communauté est en ligne</span>
-            <span className="auth-visual__edition">ÉDITION 2026</span>
+            <span className="auth-visual__status">ÉCHECS EN LIGNE</span>
+            <nav className="auth-visual__nav" aria-label="Navigation de connexion">
+              <button
+                type="button"
+                className={mode === 'signin' ? 'is-active' : undefined}
+                aria-pressed={mode === 'signin'}
+                onClick={() => changeMode('signin')}
+              >
+                Connexion
+              </button>
+              <button
+                type="button"
+                className={mode === 'signup' ? 'is-active' : undefined}
+                aria-pressed={mode === 'signup'}
+                onClick={() => changeMode('signup')}
+              >
+                Créer un compte
+              </button>
+            </nav>
           </div>
 
           <div className="auth-visual__content">
-            <p className="auth-eyebrow">Plus qu'un jeu. Votre prochain coup.</p>
-            <h2>La stratégie<br />prend vie <span>ici.</span></h2>
+            <p className="auth-eyebrow">VOTRE ESPACE DE JEU</p>
+            <h2>Jouez aux<br />échecs <span>en ligne.</span></h2>
             <p className="auth-visual__description">
-              Jouez, progressez et partagez chaque partie avec des passionnés d'échecs.
+              Créez un compte pour retrouver vos parties et votre progression.
             </p>
 
             <div className="auth-board" aria-hidden="true">
               {BOARD_ROWS.flatMap((row, rowIndex) =>
-                [...row].map((piece, columnIndex) => (
+                row.map((piece, columnIndex) => (
                   <span
                     key={`${rowIndex}-${columnIndex}`}
                     className={`auth-board__square ${(rowIndex + columnIndex) % 2 === 0 ? 'is-light' : 'is-dark'}`}
                   >
-                    {piece !== '.' && (
-                      <span className={`auth-board__piece ${rowIndex < 2 ? 'is-black' : 'is-white'}`}>
-                        {piece}
-                      </span>
+                    {piece && (
+                      <span
+                        className="auth-board__piece"
+                        role="img"
+                        aria-label={`${PIECE_LABELS[piece[1]]} ${piece[0] === 'w' ? 'blanc' : 'noir'}`}
+                        dangerouslySetInnerHTML={{ __html: KANEO_PIECES[piece] }}
+                      />
                     )}
                   </span>
                 )),
@@ -308,13 +306,6 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
             </div>
           </div>
 
-          <div className="auth-visual__footer">
-            <div>
-              <strong>Chaque partie compte.</strong>
-              <span>Votre échiquier vous attend.</span>
-            </div>
-            <span className="auth-visual__knight" aria-hidden="true">♞</span>
-          </div>
         </aside>
       </div>
     </main>

@@ -33,7 +33,7 @@
 - Modales : aucun composant modal générique identifié ; `--bg-modal` défini dans `tailwind.config.js` suggère un usage prévu, mais pas de composant `Modal` trouvé dans `src/components/`.
 - Notifications : `src/components/ui/toast.tsx`, `src/hooks/use-toast.ts`, `src/hooks/use-alert.tsx`.
 - Graphiques : aucun composant de visualisation de données identifié.
-- Autres : `ChessBoard.tsx`, `ChessBoardPreferences.tsx`, `ColorPreferenceSelector.tsx`, `GameSetupControls.tsx`, `PlayerProfileMenu.tsx`, `PlayerSearch.tsx`, `Image.tsx` ; flux d'authentification dédié (`src/components/auth/`: `AuthLayout`, `LoginForm`, `RegisterForm`, `SuccessState`, `AuthButton`) avec son propre langage visuel (variables `--color-*`/`--font-*` non définies ailleurs).
+- Autres : `ChessBoard.tsx`, `ChessBoardPreferences.tsx`, `ColorPreferenceSelector.tsx`, `GameSetupControls.tsx`, `PlayerProfileMenu.tsx`, `PlayerSearch.tsx`, `Image.tsx` ; la page d'authentification (`src/pages/AuthPage.tsx` et `src/pages/AuthPage.css`) utilise une composition en deux panneaux : échiquier forestier oblique sur fond sombre à gauche, formulaire clair centré à droite et action principale corail. Sur mobile, le formulaire passe en pleine largeur et peut défiler pour rester accessible avec le clavier.
 
 ## Interactions
 - Durées et types de transitions : `transition duration-200 ease-in-out` sur les boutons (`Button.tsx`) ; `transform`/`box-shadow` sur `160ms ease` pour certaines cartes (`src/App.css`, ex. `.opponent-card:hover`).
@@ -45,3 +45,4 @@
 Pour chaque décision importante, noter le choix, la raison et les pages concernées.
 - **Thème sombre par défaut avec bascule persistée** — toutes les pages. Voir `src/assets/js/theme.ts` et `index.html` (`class="dark"`).
 - **Personnalisation de l'échiquier** (15 thèmes de plateau, dont noir et blanc, et styles de pièces, persistés en `localStorage` sous la clé `chessarena-board-appearance`) — choix des thèmes aussi disponible sur l'accueil invité. Voir `src/chess/chessAppearance.ts` et `src/context/ChessAppearanceContext.tsx`. Détail consigné dans `docs/DECISIONS.md`.
+- **Connexion et inscription sur une carte divisée** — panneau d'échiquier sombre à gauche et formulaire blanc à droite, avec CTA corail ; le comportement d'authentification reste partagé entre les deux modes. Voir `src/pages/AuthPage.tsx` et `src/pages/AuthPage.css`.
