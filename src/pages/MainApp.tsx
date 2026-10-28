@@ -13,10 +13,12 @@ import UsersPage from "./UsersPage";
 import MessagesPage from "./MessagesPage";
 import NotificationsPage from "./NotificationsPage";
 import LearnPage from "./LearnPage";
+import StrategyPage from "./StrategyPage";
 import WatchPage from "./WatchPage";
 import ProblemsPage from "./ProblemsPage";
 import RankingsPage from "./RankingsPage";
 import BoardEditorPage from "./BoardEditorPage";
+import RulesPage from "./RulesPage";
 import AchievementsPage from "./AchievementsPage";
 import OrganizerDashboardPage from "./OrganizerDashboardPage";
 import AdminDashboardPage from "./AdminDashboardPage";
@@ -110,10 +112,12 @@ export default function MainApp() {
           )}
           {tab === "notifications" && <NotificationsPage notifications={notifications} />}
           {tab === "learn" && <LearnPage />}
+          {tab === "strategy" && <StrategyPage />}
           {tab === "watch" && <WatchPage />}
           {tab === "problems" && <ProblemsPage />}
           {tab === "rankings" && <RankingsPage />}
           {tab === "board-editor" && <BoardEditorPage />}
+          {tab === "rules" && <RulesPage />}
           {tab === "achievements" && profile && <AchievementsPage />}
           {tab === "organizer" && (profile?.role === "ORGANIZER" || profile?.role === "ADMIN") && (
             <OrganizerDashboardPage onOpenTournaments={() => setTab("tournaments")} />

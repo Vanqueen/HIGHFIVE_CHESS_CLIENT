@@ -61,12 +61,13 @@ export default function HeaderPage() {
           <button
             type="button"
             className="vc-header__icon-btn vc-theme-toggle"
-            aria-label={theme === "dark" ? "Activer le thème clair" : "Activer le thème sombre"}
-            title={theme === "dark" ? "Thème clair" : "Thème sombre"}
+            aria-label={theme === "dark" ? "Passer au mode clair" : "Passer au mode sombre"}
+            title={theme === "dark" ? "Passer au mode clair" : "Passer au mode sombre"}
             onClick={toggleTheme}
           >
-            {theme === "dark" ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
-            <span>{theme === "dark" ? "Clair" : "Sombre"}</span>
+            <span className="vc-theme-toggle__icon" aria-hidden="true">
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </span>
           </button>
           {isAuthenticated ? (
             <>

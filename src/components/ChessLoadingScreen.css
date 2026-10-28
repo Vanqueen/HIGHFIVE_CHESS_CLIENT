@@ -1,0 +1,104 @@
+.chess-loading {
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #e8f0eb;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(50, 112, 79, .22), transparent 48%),
+    #0b1713;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+.chess-loading__card {
+  display: flex;
+  width: min(100%, 300px);
+  flex-direction: column;
+  align-items: center;
+  gap: 17px;
+  padding: 28px 30px 25px;
+  border: 1px solid rgba(115, 177, 139, .22);
+  border-radius: 20px;
+  background: rgba(19, 39, 30, .88);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .3);
+}
+
+.chess-loading__board {
+  position: relative;
+  display: grid;
+  width: 112px;
+  aspect-ratio: 1;
+  grid-template-columns: repeat(8, 1fr);
+  overflow: hidden;
+  border: 4px solid #243d30;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(133, 193, 154, .28);
+  animation: chess-loading-board 2.8s ease-in-out infinite;
+}
+
+.chess-loading__square { background: #dce3c9; }
+.chess-loading__square.is-dark { background: #56816a; }
+.chess-loading__square.is-active { background: #79be91; }
+
+.chess-loading__knight {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #f2f4e9;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35));
+  animation: chess-loading-move 2.8s ease-in-out infinite;
+}
+
+.chess-loading__brand {
+  color: #e8f0eb;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.chess-loading__brand span { color: #74bd90; }
+
+.chess-loading__message {
+  color: #afc0b5;
+  font-size: 13px;
+  text-align: center;
+}
+
+.chess-loading__progress {
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .08);
+}
+
+.chess-loading__progress i {
+  display: block;
+  width: 38%;
+  height: 100%;
+  border-radius: inherit;
+  background: #74bd90;
+  animation: chess-loading-progress 1.5s ease-in-out infinite;
+}
+
+@keyframes chess-loading-board {
+  50% { transform: rotate(-3deg) scale(1.025); }
+}
+
+@keyframes chess-loading-move {
+  0%, 12% { transform: translate(-14px, 14px); }
+  42%, 60% { transform: translate(14px, -14px); }
+  88%, 100% { transform: translate(-14px, 14px); }
+}
+
+@keyframes chess-loading-progress {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(290%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chess-loading__board, .chess-loading__knight, .chess-loading__progress i { animation-duration: 6s; }
+}

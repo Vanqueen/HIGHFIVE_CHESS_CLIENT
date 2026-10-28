@@ -525,7 +525,7 @@ export default function PlayPage({
       } catch (requestError) {
         setError(errorMessage(requestError, "Impossible d’accepter ce défi."));
       } finally {
-        window.history.replaceState(null, "", "/");
+        window.history.replaceState(null, "", "/?tab=play");
         setLinkProcessing(false);
       }
     });
@@ -577,7 +577,7 @@ export default function PlayPage({
       } catch (requestError) {
         setError(errorMessage(requestError, "Impossible de rejoindre cette partie."));
       } finally {
-        window.history.replaceState(null, "", "/");
+        window.history.replaceState(null, "", "/?tab=play");
         setLinkProcessing(false);
       }
     });
@@ -1262,7 +1262,7 @@ export default function PlayPage({
     if (activeGame && guestSession?.gameId === activeGame.id) {
       clearGuestGameSession();
       setGuestSession(null);
-      window.history.replaceState(null, "", "/");
+      window.history.replaceState(null, "", "/?tab=play");
     }
     activeGameRef.current = null;
     setActiveGame(null);

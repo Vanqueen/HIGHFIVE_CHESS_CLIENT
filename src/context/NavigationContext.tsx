@@ -12,7 +12,9 @@ export type Tab =
   | "tournaments"
   | "problems"
   | "learn"
+  | "strategy"
   | "board-editor"
+  | "rules"
   | "watch"
   | "rankings"
   | "friends"
@@ -22,6 +24,20 @@ export type Tab =
   | "achievements"
   | "organizer"
   | "admin";
+
+const TAB_VALUES: Tab[] = [
+  "home", "profile", "play", "computer", "games", "tournaments", "problems",
+  "learn", "strategy", "board-editor", "rules", "watch", "rankings", "friends",
+  "messages", "notifications", "users", "achievements", "organizer", "admin",
+];
+
+function getTabFromLocation(): Tab {
+  const requestedTab = new URLSearchParams(window.location.search).get("tab");
+  if (requestedTab && TAB_VALUES.includes(requestedTab as Tab)) return requestedTab as Tab;
+  if (window.location.pathname === "/computer") return "computer";
+  if (/^\/(?:challenge|challenge-link|guest-game)\//.test(window.location.pathname)) return "play";
+  return "home";
+}
 
 type NavigationContextType = {
   tab: Tab;
@@ -62,14 +78,23 @@ function normalizeCreatedAt(value: unknown) {
 export function NavigationProvider({ children }: { children: React.ReactNode }) {
   const { profile } = useAuth();
   const { socket } = useSocket();
-  const [tab, setTab] = useState<Tab>(() =>
-    window.location.pathname === "/computer"
-      ? "computer"
-      : /^\/(?:challenge|challenge-link|guest-game)\//.test(window.location.pathname)
-      ? "play"
-      : "home",
-  );
+  const [tab, setTabState] = useState<Tab>(getTabFromLocation);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const setTab = (nextTab: Tab) => {
+    setTabState(nextTab);
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("tab") !== nextTab) {
+      url.searchParams.set("tab", nextTab);
+      window.history.pushState(window.history.state, "", url);
+    }
+  };
+
+  useEffect(() => {
+    const syncTabFromHistory = () => setTabState(getTabFromLocation());
+    window.addEventListener("popstate", syncTabFromHistory);
+    return () => window.removeEventListener("popstate", syncTabFromHistory);
+  }, []);
 
   useEffect(() => {
     if (!socket) return;

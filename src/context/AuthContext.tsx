@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 import { useDispatch } from 'react-redux';
 import type { LoginUser, CreateUser, AuthResponse, User } from '../types/User';
@@ -29,7 +29,7 @@ function readStoredUser(): User | null {
 type AuthContextType = {
   user: User | null,
   profile: User | null,
-  loading?: boolean,
+  loading: boolean,
   accessToken: string | null,
   login: (data: LoginUser) => Promise<AuthResponse>;
   register: (data: CreateUser) => Promise<AuthResponse>;
@@ -39,7 +39,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType>({
   user: {id: "", username: "", email: "", createdAt: "", isVerified: false },
   profile: null,
-  // loading: true,
+  loading: false,
   accessToken: "",
   login: async () => ({ success: false, data: { user: null, accessToken: null }, message: '' }),
   register: async () => ({ success: false, data: { user: null, accessToken: null }, message: '' }),
@@ -66,20 +66,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
   const accessToken = useSelector((state: RootState) => state.auth.accessToken);
-  // const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(accessToken && !user));
 
   useEffect(() => {
-    if (!accessToken || user) return;
+    if (!accessToken || user) {
+      setLoading(false);
+      return;
+    }
 
     let active = true;
+    setLoading(true);
     authApi.me()
       .then(({ data }) => {
         if (active) dispatch(authActions.setCredentials({ user: data.user, accessToken: accessToken }));
       })
       .catch(() => {
+        // The axios interceptor clears the stored tokens when refresh fails.
+        // Keep them when /me fails for a transient network or server error.
         if (active && !localStorage.getItem(TOKEN_STORAGE_KEY)) {
           dispatch(authActions.logout());
         }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
 
     return () => {
@@ -195,7 +204,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile: user, accessToken, login, register, logout }}>
+    <AuthContext.Provider value={{ user, profile: user, accessToken, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

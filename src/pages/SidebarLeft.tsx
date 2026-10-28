@@ -5,6 +5,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Crosshair,
+  FileText,
   Gamepad2,
   Home,
   LayoutGrid,
@@ -31,8 +33,10 @@ const PLAY_NAV: NavItem[] = [
 ];
 
 const TRAINING_NAV: NavItem[] = [
-  { id: "problems", label: "Problèmes", icon: <Puzzle size={18} /> },
   { id: "learn", label: "Apprendre", icon: <BookOpen size={18} /> },
+  { id: "rules", label: "Règles", icon: <FileText size={18} /> },
+  { id: "strategy", label: "Thèmes techniques & lecture de l’échiquier", icon: <Crosshair size={18} /> },
+  { id: "problems", label: "Problèmes", icon: <Puzzle size={18} /> },
   { id: "board-editor", label: "Éditeur d'échiquier", icon: <LayoutGrid size={18} /> },
 ];
 
@@ -46,7 +50,7 @@ const COMMUNITY_NAV: NavItem[] = [
 
 const getGroupForTab = (tab: Tab): NavGroupId => {
   if (["home", "play", "tournaments"].includes(tab)) return "play";
-  if (["problems", "learn", "board-editor"].includes(tab)) return "training";
+  if (["rules", "problems", "learn", "strategy", "board-editor"].includes(tab)) return "training";
   if (["profile", "rankings", "friends", "messages", "achievements"].includes(tab)) return "community";
   return "management";
 };
@@ -88,7 +92,7 @@ export default function SidebarLeft({ onNavigate, onToggleSidebar, sidebarCollap
       icon: <BookOpen size={18} />,
       items: isAuthenticated
         ? TRAINING_NAV
-        : TRAINING_NAV.filter((item) => item.id === "learn"),
+        : TRAINING_NAV.filter((item) => item.id === "learn" || item.id === "rules" || item.id === "strategy"),
     },
     ...(isAuthenticated
       ? [{
@@ -151,7 +155,7 @@ export default function SidebarLeft({ onNavigate, onToggleSidebar, sidebarCollap
                   <li key={item.id}>
                     <button
                       type="button"
-                      className={`vc-sidebar-nav__item${tab === item.id ? " is-active" : ""} mt-1`}
+                      className={`vc-sidebar-nav__item${tab === item.id ? " is-active" : ""}${item.id === "strategy" ? " vc-sidebar-nav__item--strategy" : ""} mt-1`}
                       onClick={() => navigateTo(item.id)}
                       aria-current={tab === item.id ? "page" : undefined}
                     >

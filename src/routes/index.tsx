@@ -7,16 +7,18 @@ import PlayPage from "../pages/PlayPage";
 import NotFound from "../pages/NotFound";
 import { readGuestGameSession } from "../guestSession";
 import ComputerGamePage from "../pages/ComputerGamePage";
+import ChessLoadingScreen from "../components/ChessLoadingScreen";
+
+function getAuthReturnPath() {
+  const requestedPath = new URLSearchParams(window.location.search).get("next");
+  return requestedPath?.startsWith("/") && !requestedPath.startsWith("//") ? requestedPath : "/";
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <ChessLoadingScreen message="Vérification de votre session…" />;
   }
 
   if (!user) return <Navigate to="/auth" replace />;
@@ -51,6 +53,9 @@ function PublicComputerRoute() {
 
 export default function AppRoutes() {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  if (loading) return <ChessLoadingScreen message="Vérification de votre session…" />;
 
   return (
     <Routes>
@@ -58,10 +63,10 @@ export default function AppRoutes() {
       <Route
         path="/auth"
         element={
-          loading ? null : user ? (
-            <Navigate to="/" replace />
+          user ? (
+            <Navigate to={getAuthReturnPath()} replace />
           ) : (
-            <AuthPage onAuthSuccess={() => {}} />
+            <AuthPage onAuthSuccess={() => navigate(getAuthReturnPath(), { replace: true })} />
           )
         }
       />
