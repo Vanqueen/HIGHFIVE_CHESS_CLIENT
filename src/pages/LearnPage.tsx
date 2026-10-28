@@ -25,6 +25,7 @@ type TutorialStep = {
   to: string;
   position: Record<string, string>;
   piece: string;
+  promotion?: string;
   success: string;
 };
 
@@ -73,7 +74,20 @@ const lessons = [
   { id: "king", title: "Déplacer le roi", description: "Bouger d’une case et éviter les cases attaquées.", duration: "2 étapes", ratingPoints: 90, available: true },
   { id: "check", title: "Échec et protection du roi", description: "Reconnaître un échec et trouver une réponse légale.", duration: "2 étapes", ratingPoints: 105, available: true },
 ];
+const intermediateLessons = [
+  { id: "intermediateTactics", title: "La fourchette", description: "Attaquer deux pièces en un seul coup.", duration: "2 étapes", ratingPoints: 100, available: true },
+  { id: "intermediateStrategy", title: "Le pion passé", description: "Faire progresser un pion jusqu’à la promotion.", duration: "3 étapes", ratingPoints: 100, available: true },
+  { id: "intermediateEndgames", title: "Le roi actif en finale", description: "Centraliser le roi pour soutenir ses pions.", duration: "2 étapes", ratingPoints: 100, available: true },
+];
+const advancedLessons = [
+  { id: "advancedCalculation", title: "Calculer une suite d’échecs", description: "Enchaîner des coups forcés pour garder l’initiative.", duration: "2 étapes", ratingPoints: 150, available: true },
+  { id: "advancedPin", title: "Exploiter un clouage", description: "Immobiliser une pièce puis profiter de sa faiblesse.", duration: "2 étapes", ratingPoints: 175, available: true },
+  { id: "advancedEndgames", title: "La tour derrière le pion passé", description: "Placer la tour pour soutenir la promotion du pion.", duration: "2 étapes", ratingPoints: 200, available: true },
+];
+const allLessons = [...lessons, ...intermediateLessons, ...advancedLessons];
 const FINAL_BEGINNER_LESSON_UNLOCK_RATING = 220;
+const INTERMEDIATE_LEVEL_UNLOCK_RATING = 500;
+const ADVANCED_LEVEL_UNLOCK_RATING = 800;
 const RATING_LOCKED_BEGINNER_LESSONS = new Set(["queen", "king", "check"]);
 
 const lessonTutorials: Record<string, TutorialStep[]> = {
@@ -102,10 +116,37 @@ const lessonTutorials: Record<string, TutorialStep[]> = {
     { title: "Sortir de l’échec", instruction: "Le roi blanc est attaqué par la tour noire. Mets-le en sécurité en f1.", explanation: "Quand le roi est en échec, il faut répondre tout de suite : le déplacer, capturer l’attaquant ou bloquer l’attaque.", from: "e1", to: "f1", position: { e1: "wK", e8: "bR" }, piece: "wK", success: "Bien joué ! Le roi a quitté la colonne attaquée et n’est plus en échec." },
     { title: "Échapper à une attaque", instruction: "La tour noire attaque le roi sur la colonne h. Déplace le roi de h1 vers g1.", explanation: "Avant de déplacer le roi, vérifie que la case d’arrivée n’est pas attaquée par une pièce adverse.", from: "h1", to: "g1", position: { h1: "wK", h8: "bR" }, piece: "wK", success: "Exact ! Le roi a quitté la colonne attaquée." },
   ],
+  intermediateTactics: [
+    { title: "Créer une fourchette", instruction: "Déplace le cavalier de f2 vers e4 : il attaquera le roi et la tour noirs.", explanation: "Une fourchette est une attaque double. Ici, le cavalier donne échec au roi en d6 tout en attaquant la tour en f6.", from: "f2", to: "e4", position: { f2: "wN", d6: "bK", f6: "bR" }, piece: "wN", success: "Bien joué ! Le cavalier attaque deux pièces à la fois. Le roi doit répondre à l’échec." },
+    { title: "Récupérer la pièce attaquée", instruction: "Le roi noir s’est écarté en c7. Capture la tour avec le cavalier en f6.", explanation: "Après la réponse à l’échec, la tour reste attaquée. Le cavalier peut maintenant la capturer.", from: "e4", to: "f6", position: { e4: "wN", c7: "bK", f6: "bR" }, piece: "wN", success: "Exact ! La fourchette a permis de gagner la tour." },
+  ],
+  intermediateStrategy: [
+    { title: "Faire avancer le pion passé", instruction: "Avance le pion blanc de e5 vers e6.", explanation: "Un pion passé n’a plus de pion adverse pour l’arrêter sur sa colonne ou sur les colonnes voisines. Il peut devenir une dame s’il avance jusqu’au bout.", from: "e5", to: "e6", position: { e5: "wP", h8: "bK" }, piece: "wP", success: "Bien joué ! Le pion passé gagne du terrain." },
+    { title: "Approcher de la promotion", instruction: "Poursuis l’avancée de e6 vers e7.", explanation: "Le pion approche de la dernière rangée. Garde-le soutenu et prépare sa promotion.", from: "e6", to: "e7", position: { e6: "wP", h8: "bK" }, piece: "wP", success: "Exact ! Le pion est à une case de la promotion." },
+    { title: "Promouvoir le pion", instruction: "Avance le pion de e7 vers e8 pour le promouvoir en dame.", explanation: "Quand un pion atteint la dernière rangée, il doit être remplacé par une dame, une tour, un fou ou un cavalier.", from: "e7", to: "e8", position: { e7: "wP", h8: "bK" }, piece: "wP", promotion: "wQ", success: "Bravo ! Le pion a atteint la dernière rangée et est devenu une dame." },
+  ],
+  intermediateEndgames: [
+    { title: "Activer le roi", instruction: "Avance le roi blanc de e2 vers e3, en direction du centre.", explanation: "En finale, le roi devient une pièce active. Il peut quitter son abri et aider ses pions à avancer.", from: "e2", to: "e3", position: { e2: "wK", a7: "bK" }, piece: "wK", success: "Bien joué ! Le roi se rapproche du centre." },
+    { title: "Entrer dans la position", instruction: "Depuis e3, avance le roi vers d4.", explanation: "Un roi centralisé peut soutenir ses pions et limiter les déplacements du roi adverse.", from: "e3", to: "d4", position: { e3: "wK", a7: "bK" }, piece: "wK", success: "Exact ! Le roi blanc est actif au centre de l’échiquier." },
+  ],
+  advancedCalculation: [
+    { title: "Donner un échec", instruction: "Joue la dame de h5 en f7 pour mettre le roi noir en échec.", explanation: "La dame en f7 donne échec au roi en g8. Le fou en c4 protège la dame contre une capture du roi.", from: "h5", to: "f7", position: { h5: "wQ", c4: "wB", f7: "bP", g8: "bK" }, piece: "wQ", success: "Bien joué ! La dame donne échec et le fou la protège." },
+    { title: "Poursuivre les coups forcés", instruction: "Le roi s’est réfugié en h8. Déplace la dame de f7 vers e8 pour donner un nouvel échec.", explanation: "Après la réponse adverse, cherche le prochain échec : les coups forcés limitent les options de défense.", from: "f7", to: "e8", position: { f7: "wQ", h8: "bK" }, piece: "wQ", success: "Exact ! La dame en e8 attaque le roi sur la rangée huit." },
+  ],
+  advancedPin: [
+    { title: "Créer un clouage absolu", instruction: "Place le fou de c4 en b5. Le cavalier noir est cloué devant son roi.", explanation: "Le fou attaque le cavalier c6 et le roi e8 derrière lui. Le cavalier ne peut pas bouger sans exposer son roi à l’échec.", from: "c4", to: "b5", position: { c4: "wB", c6: "bN", e8: "bK" }, piece: "wB", success: "Bien joué ! Le cavalier est cloué au roi par le fou." },
+    { title: "Gagner la pièce clouée", instruction: "Capture le cavalier avec le fou en allant de b5 vers c6.", explanation: "Une pièce clouée est plus difficile à défendre. Le fou peut maintenant la capturer.", from: "b5", to: "c6", position: { b5: "wB", c6: "bN", e8: "bK" }, piece: "wB", success: "Exact ! Le fou a capturé le cavalier cloué." },
+  ],
+  advancedEndgames: [
+    { title: "Placer la tour derrière le pion", instruction: "Amène la tour blanche de a1 en a4, derrière le pion passé a6.", explanation: "Une tour est souvent plus efficace derrière son pion passé : elle peut le pousser tout en le protégeant.", from: "a1", to: "a4", position: { a1: "wR", a6: "wP", h8: "bK" }, piece: "wR", success: "Bien joué ! La tour soutient maintenant le pion par derrière." },
+    { title: "Pousser le pion soutenu", instruction: "Avance le pion de a6 vers a7.", explanation: "Avec la tour derrière lui, le pion peut avancer vers la promotion tout en restant soutenu.", from: "a6", to: "a7", position: { a4: "wR", a6: "wP", h8: "bK" }, piece: "wP", success: "Exact ! Le pion avance, soutenu par sa tour." },
+  ],
 };
 
 const LESSON_PIECES: Record<string, string> = {
-  pawn: "wP", knight: "wN", bishop: "wB", rook: "wR", queen: "wQ", king: "wK", check: "bK", special: "wQ",
+  pawn: "wP", knight: "wN", bishop: "wB", rook: "wR", queen: "wQ", king: "wK", check: "bK",
+  intermediateTactics: "wN", intermediateStrategy: "wP", intermediateEndgames: "wK",
+  advancedCalculation: "wQ", advancedPin: "wB", advancedEndgames: "wR",
 };
 const PIECE_NAMES: Record<string, string> = { K: "roi", Q: "dame", R: "tour", B: "fou", N: "cavalier", P: "pion" };
 const pieceLabel = (piece: string) => `${PIECE_NAMES[piece[1]]} ${piece[0] === "w" ? "blanc" : "noir"}`;
@@ -240,6 +281,7 @@ export default function LearnPage() {
   const [trainingLoadAttempt, setTrainingLoadAttempt] = useState(0);
   const [lastEloGain, setLastEloGain] = useState<number | null>(null);
   const [view, setView] = useState<"levels" | "lessons" | "tutorial">("levels");
+  const [activeLevel, setActiveLevel] = useState<"beginner" | "intermediate" | "advanced">("beginner");
   const [activeLessonId, setActiveLessonId] = useState("pawn");
   const [stepIndex, setStepIndex] = useState(0);
   const [board, setBoard] = useState<Record<string, string>>({});
@@ -247,7 +289,8 @@ export default function LearnPage() {
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [stepComplete, setStepComplete] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) ?? lessons[0];
+  const activeCourseLessons = activeLevel === "beginner" ? lessons : activeLevel === "intermediate" ? intermediateLessons : advancedLessons;
+  const activeLesson = allLessons.find((lesson) => lesson.id === activeLessonId) ?? lessons[0];
   const activeSteps = lessonTutorials[activeLesson.id] ?? pawnSteps;
   const step = activeSteps[stepIndex];
   const specialCoursesUnlocked = trainingProgress?.specialCoursesUnlocked ?? false;
@@ -255,6 +298,27 @@ export default function LearnPage() {
   const specialCoursesProgress = specialCoursesUnlockRating
     ? Math.min(100, Math.round(((trainingProgress?.rating ?? 0) / specialCoursesUnlockRating) * 100))
     : 0;
+  const advancedRating = trainingProgress?.rating ?? 0;
+  const intermediateUnlocked = Boolean(user) && !trainingLoading && !trainingLoadError && advancedRating >= INTERMEDIATE_LEVEL_UNLOCK_RATING;
+  const advancedUnlocked = Boolean(user) && !trainingLoading && !trainingLoadError && advancedRating >= ADVANCED_LEVEL_UNLOCK_RATING;
+  const intermediateStatus = !user
+    ? "CONNEXION REQUISE"
+    : trainingLoading
+      ? "CHARGEMENT DU CLASSEMENT"
+      : trainingLoadError
+        ? "PROGRESSION INDISPONIBLE"
+        : intermediateUnlocked
+          ? "3 LEÇONS · 300 ELO"
+          : `${INTERMEDIATE_LEVEL_UNLOCK_RATING} ELO REQUIS`;
+  const advancedStatus = !user
+    ? "CONNEXION REQUISE"
+    : trainingLoading
+      ? "CHARGEMENT DU CLASSEMENT"
+      : trainingLoadError
+        ? "PROGRESSION INDISPONIBLE"
+        : advancedUnlocked
+          ? "3 LEÇONS · 525 ELO"
+          : `${ADVANCED_LEVEL_UNLOCK_RATING} ELO REQUIS`;
   const goToSignIn = () => navigate(`/auth?mode=signin&next=${encodeURIComponent("/?tab=learn")}`);
 
   useEffect(() => {
@@ -447,9 +511,9 @@ export default function LearnPage() {
         <button className="vc-learn__back" type="button" onClick={() => setView("levels")}><ArrowLeft size={16} /> Tous les niveaux</button>
         <div className="vc-learn__intro-row">
           <header className="vc-learn__header">
-            <p className="vc-learn__eyebrow"><GraduationCap size={14} /> PARCOURS DÉBUTANT</p>
-            <h1>Choisis ta leçon</h1>
-            <p>Chaque leçon te guide sur l’échiquier, coup après coup.</p>
+            <p className="vc-learn__eyebrow"><GraduationCap size={14} /> PARCOURS {activeLevel === "beginner" ? "DÉBUTANT" : activeLevel === "intermediate" ? "INTERMÉDIAIRE" : "AVANCÉ"}</p>
+            <h1>{activeLevel === "beginner" ? "Choisis ta leçon" : activeLevel === "intermediate" ? "Affûte ta stratégie" : "Maîtrise les positions complexes"}</h1>
+            <p>{activeLevel === "beginner" ? "Chaque leçon te guide sur l’échiquier, coup après coup." : activeLevel === "intermediate" ? "Mets en pratique les tactiques, les pions passés et le jeu du roi en finale." : "Calcule les variantes, exploite les faiblesses et convertis tes avantages."}</p>
           </header>
           <TrainingEloCard
             progress={trainingProgress}
@@ -466,8 +530,8 @@ export default function LearnPage() {
           />
         </div>
         <div className="vc-learn__lessons">
-          {lessons.map((lesson) => {
-            const requiresLogin = lesson.id !== "pawn";
+          {activeCourseLessons.map((lesson) => {
+            const requiresLogin = activeLevel !== "beginner" || lesson.id !== "pawn";
             const requiresRating = RATING_LOCKED_BEGINNER_LESSONS.has(lesson.id);
             const rating = trainingProgress?.rating ?? 0;
             const ratingLoaded = !trainingLoading && !trainingLoadError;
@@ -532,7 +596,7 @@ export default function LearnPage() {
         />
       </div>
       <section className="vc-learn__levels" aria-label="Niveaux d’apprentissage">
-        <button type="button" className="vc-learn__level-card is-available" onClick={() => setView("lessons")}>
+        <button type="button" className="vc-learn__level-card is-available" onClick={() => { setActiveLevel("beginner"); setView("lessons"); }}>
           <LevelIllustration level="beginner" />
           <span className="vc-learn__level-copy">
             <span className="vc-learn__level-tag">POUR BIEN COMMENCER</span>
@@ -546,35 +610,47 @@ export default function LearnPage() {
         </button>
         <button
           type="button"
-          className="vc-learn__level-card is-upcoming"
-          disabled={Boolean(user)}
-          onClick={goToSignIn}
-          aria-label={user ? "Le niveau Intermédiaire sera bientôt disponible" : "Connectez-vous pour accéder au niveau Intermédiaire"}
+          className={`vc-learn__level-card${intermediateUnlocked ? " is-available" : " is-upcoming"}`}
+          disabled={Boolean(user) && !intermediateUnlocked}
+          onClick={() => {
+            if (!user) goToSignIn();
+            else if (intermediateUnlocked) {
+              setActiveLevel("intermediate");
+              setView("lessons");
+            }
+          }}
+          aria-label={intermediateUnlocked ? "Accéder au niveau Intermédiaire" : !user ? "Connectez-vous pour accéder au niveau Intermédiaire" : `Terminez le parcours Débutant et atteignez ${INTERMEDIATE_LEVEL_UNLOCK_RATING} Elo pour accéder au niveau Intermédiaire`}
         >
           <LevelIllustration level="intermediate" />
           <span className="vc-learn__level-copy">
-            <span className="vc-learn__level-tag">{user ? "POUR CONSOLIDER" : "CONNEXION REQUISE"}</span>
+            <span className="vc-learn__level-tag">{intermediateStatus}</span>
             <strong>Intermédiaire</strong>
-            <span className="vc-learn__level-description">Travaille les combinaisons, les plans et les finales courantes.</span>
+            <span className="vc-learn__level-description">Travaille les combinaisons, les plans et les finales courantes. Termine les leçons débutantes pour y accéder.</span>
             <span className="vc-learn__level-footer">
-              {user ? <><LockKeyhole size={14} /> Bientôt disponible</> : <>Se connecter pour accéder <ArrowRight size={15} /></>}
+              {intermediateUnlocked ? <>Voir les leçons <ArrowRight size={16} /></> : !user ? <>Se connecter pour accéder <ArrowRight size={15} /></> : <><LockKeyhole size={14} /> {trainingLoadError ? "Réessaie le chargement" : `${advancedRating}/${INTERMEDIATE_LEVEL_UNLOCK_RATING} Elo`}</>}
             </span>
           </span>
         </button>
         <button
           type="button"
-          className="vc-learn__level-card is-upcoming"
-          disabled={Boolean(user)}
-          onClick={goToSignIn}
-          aria-label={user ? "Le niveau Avancé sera bientôt disponible" : "Connectez-vous pour accéder au niveau Avancé"}
+          className={`vc-learn__level-card${advancedUnlocked ? " is-available" : " is-upcoming"}`}
+          disabled={Boolean(user) && !advancedUnlocked}
+          onClick={() => {
+            if (!user) goToSignIn();
+            else if (advancedUnlocked) {
+              setActiveLevel("advanced");
+              setView("lessons");
+            }
+          }}
+          aria-label={advancedUnlocked ? "Accéder au niveau Avancé" : !user ? "Connectez-vous pour accéder au niveau Avancé" : `Atteignez ${ADVANCED_LEVEL_UNLOCK_RATING} Elo pour accéder au niveau Avancé`}
         >
           <LevelIllustration level="advanced" />
           <span className="vc-learn__level-copy">
-            <span className="vc-learn__level-tag">{user ? "POUR ALLER PLUS LOIN" : "CONNEXION REQUISE"}</span>
+            <span className="vc-learn__level-tag">{advancedStatus}</span>
             <strong>Avancé</strong>
-            <span className="vc-learn__level-description">Approfondis le calcul, la stratégie et la préparation de partie.</span>
+            <span className="vc-learn__level-description">Calcule les variantes, exploite les clouages et maîtrise les finales de tours.</span>
             <span className="vc-learn__level-footer">
-              {user ? <><LockKeyhole size={14} /> Bientôt disponible</> : <>Se connecter pour accéder <ArrowRight size={15} /></>}
+              {advancedUnlocked ? <>Voir les leçons <ArrowRight size={16} /></> : !user ? <>Se connecter pour accéder <ArrowRight size={15} /></> : <><LockKeyhole size={14} /> {trainingLoadError ? "Réessaie le chargement" : `${advancedRating}/${ADVANCED_LEVEL_UNLOCK_RATING} Elo`}</>}
             </span>
           </span>
         </button>
